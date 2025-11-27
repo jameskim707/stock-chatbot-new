@@ -120,9 +120,33 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
+    /* AI 상담 탭 강조 (두 번째 탭) */
+    .stTabs [data-baseweb="tab-list"] button:nth-child(2) {
+        animation: pulse 2s ease-in-out infinite;
+        background: linear-gradient(90deg, rgba(255,100,100,0.2), rgba(100,100,255,0.2));
+        font-weight: bold;
+    }
+    
     /* 제목 반짝임 */
     h1 {
         animation: sparkle 3s ease-in-out infinite;
+    }
+    
+    /* 안내 배너 */
+    .ai-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        margin: 20px 0;
+        animation: pulse 3s ease-in-out infinite;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    
+    .ai-banner h3 {
+        color: white;
+        margin: 0;
+        font-size: 1.3rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -288,10 +312,17 @@ def create_mini_chart(data, title):
 st.markdown('<h1><span class="icon-sparkle">🛡️</span> GINI Guardian</h1>', unsafe_allow_html=True)
 st.caption("과도한 투자로부터 당신을 지키는 AI 친구 | Made by Miracle 🔥")
 
+# AI 상담 안내 배너
+st.markdown("""
+<div class="ai-banner">
+    <h3>🤖 궁금한 종목이 있으신가요? AI 상담 탭에서 무료로 물어보세요!</h3>
+</div>
+""", unsafe_allow_html=True)
+
 # 탭 생성
 tab1, tab2, tab3 = st.tabs([
     "📊 실시간 시장", 
-    "💬 AI 상담", 
+    "💬 AI 상담 🔥", 
     "📈 내 포트폴리오"
 ])
 
@@ -521,10 +552,32 @@ with st.sidebar:
     st.markdown("**주식 과잉 방어 챗봇**")
     st.markdown("---")
     
+    # 큰 AI 상담 버튼
+    st.markdown("""
+    <div style="
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin: 20px 0;
+        cursor: pointer;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    ">
+        <h2 style="color: white; margin: 0;">🤖</h2>
+        <h3 style="color: white; margin: 10px 0;">AI에게 물어보기</h3>
+        <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 0.9rem;">
+            24시간 무료 상담<br/>
+            투자 고민 해결!
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
     st.markdown("#### 📌 주요 기능")
     st.markdown("""
     - <span class="icon-bounce">📊</span> 실시간 시장 모니터링
-    - <span class="icon-bounce">📈</span> 5일 차트 제공
+    - <span class="icon-bounce">📈</span> 랜덤 종목 추천 (4개)
     - <span class="icon-sparkle">💬</span> AI 투자 상담
     - <span class="icon-sparkle">🚨</span> 위험 거래 경고
     - 📈 포트폴리오 분석 (준비중)
@@ -534,6 +587,7 @@ with st.sidebar:
     st.markdown("#### ✨ 생동감 요소")
     st.markdown("""
     - 📈 실시간 차트
+    - 🎲 랜덤 종목 추천
     - 🔄 자동 새로고침
     - 💫 아이콘 애니메이션
     - 🚨 경고 깜빡임
@@ -542,5 +596,5 @@ with st.sidebar:
     
     st.markdown("---")
     st.markdown('<div class="icon-rotate">🔥</div> <b>Made by Miracle</b>', unsafe_allow_html=True)
-    st.caption("Version 3.0 - Complete Edition")
+    st.caption("Version 3.5 - Random Stocks")
     st.caption("© 2024 GINI Guardian")
