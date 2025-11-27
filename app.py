@@ -188,6 +188,42 @@ client = init_groq()
     ]
 }
 
+# 관심 종목 풀
+관심종목_풀 = {
+    # 반도체 & AI
+    "005930.KS": "삼성전자",
+    "000660.KS": "SK하이닉스",
+    
+    # IT & 플랫폼
+    "035420.KS": "NAVER",
+    "035720.KS": "카카오",
+    "323410.KS": "카카오뱅크",
+    
+    # 바이오 & 헬스케어
+    "207940.KS": "삼성바이오로직스",
+    "068270.KS": "셀트리온",
+    "326030.KS": "SK바이오팜",
+    
+    # 2차전지
+    "373220.KS": "LG에너지솔루션",
+    "006400.KS": "삼성SDI",
+    
+    # 방산 & 조선
+    "012450.KS": "한화에어로스페이스",
+    "009540.KS": "HD한국조선해양",
+    
+    # 엔터테인먼트
+    "352820.KS": "하이브",
+    "041510.KS": "SM",
+    
+    # 금융
+    "086790.KS": "하나금융지주",
+    "071050.KS": "한국금융지주",
+    
+    # 로봇
+    "277810.KS": "레인보우로보틱스",
+}
+
 # 실시간 시장 데이터 가져오기
 @st.cache_data(ttl=300)
 def get_market_data():
@@ -201,18 +237,22 @@ def get_market_data():
         usd_krw = yf.Ticker("KRW=X")
         usd_data = usd_krw.history(period="5d")
         
-        samsung = yf.Ticker("005930.KS")
-        samsung_data = samsung.history(period="5d", interval="1h")
+        # 랜덤으로 4개 종목 선택
+        selected_tickers = random.sample(list(관심종목_풀.keys()), 4)
         
-        skhynix = yf.Ticker("000660.KS")
-        skhynix_data = skhynix.history(period="5d", interval="1h")
+        stocks_data = {}
+        for ticker in selected_tickers:
+            stock = yf.Ticker(ticker)
+            stocks_data[ticker] = {
+                "name": 관심종목_풀[ticker],
+                "data": stock.history(period="5d", interval="1h")
+            }
         
         return {
             "kospi": kospi_data,
             "kosdaq": kosdaq_data,
             "usd_krw": usd_data,
-            "samsung": samsung_data,
-            "skhynix": skhynix_data
+            "stocks": stocks_data
         }
     except Exception as e:
         return None
@@ -316,55 +356,76 @@ with tab1:
         st.divider()
         
         # 차트 섹션
-        st.markdown('<h3><span class="icon-bounce">📈</span> 최근 5일 차트</h3>', unsafe_allow_html=True)
+        st.markdown('<h3><span class="icon-bounce">📈</span> 오늘의 추천 종목 (랜덤 4개)</h3>', unsafe_allow_html=True)
         
-        chart_col1, chart_col2 = st.columns(2)
+        # 2x2 그리드로 4개 종목 표시
+        chart_row1_col1, chart_row1_col2 = st.columns(2)
+        chart_row2_col1, chart_row2_col2 = st.columns(2)
         
-        with chart_col1:
-            if not market_data["kospi"].empty and len(market_data["kospi"]) >= 2:
-                fig_kospi = create_mini_chart(market_data["kospi"], "코스피 (5일)")
-                if fig_kospi:
-                    st.plotly_chart(fig_kospi, use_container_width=True)
-            else:
-                st.info("📊 코스피 차트 데이터 준비 중...")
+        stock_items = list(market_data["stocks"].items())
         
-        with chart_col2:
-            if not market_data["samsung"].empty and len(market_data["samsung"]) >= 2:
-                fig_samsung = create_mini_chart(market_data["samsung"], "삼성전자 (5일)")
-                if fig_samsung:
-                    st.plotly_chart(fig_samsung, use_container_width=True)
-            else:
-                st.info("📊 삼성전자 차트 데이터 준비 중...")
+        # 첫 번째 줄
+        with chart_row1_col1:
+            if len(stock_items) > 0:
+                ticker, info = stock_items[0]
+                if not info["data"].empty and len(info["data"]) >= 2:
+                    fig = create_mini_chart(info["data"], f"{info['name']} (5일)")
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                        # 현재가 표시
+                        current = info["data"]["Close"].iloc[-1]
+                        prev = info["data"]["Close"].iloc[-2]
+                        change = ((current - prev) / prev) * 100
+                        st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                else:
+                    st.info(f"📊 {info['name']} 데이터 준비 중...")
+        
+        with chart_row1_col2:
+            if len(stock_items) > 1:
+                ticker, info = stock_items[1]
+                if not info["data"].empty and len(info["data"]) >= 2:
+                    fig = create_mini_chart(info["data"], f"{info['name']} (5일)")
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                        current = info["data"]["Close"].iloc[-1]
+                        prev = info["data"]["Close"].iloc[-2]
+                        change = ((current - prev) / prev) * 100
+                        st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                else:
+                    st.info(f"📊 {info['name']} 데이터 준비 중...")
+        
+        # 두 번째 줄
+        with chart_row2_col1:
+            if len(stock_items) > 2:
+                ticker, info = stock_items[2]
+                if not info["data"].empty and len(info["data"]) >= 2:
+                    fig = create_mini_chart(info["data"], f"{info['name']} (5일)")
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                        current = info["data"]["Close"].iloc[-1]
+                        prev = info["data"]["Close"].iloc[-2]
+                        change = ((current - prev) / prev) * 100
+                        st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                else:
+                    st.info(f"📊 {info['name']} 데이터 준비 중...")
+        
+        with chart_row2_col2:
+            if len(stock_items) > 3:
+                ticker, info = stock_items[3]
+                if not info["data"].empty and len(info["data"]) >= 2:
+                    fig = create_mini_chart(info["data"], f"{info['name']} (5일)")
+                    if fig:
+                        st.plotly_chart(fig, use_container_width=True)
+                        current = info["data"]["Close"].iloc[-1]
+                        prev = info["data"]["Close"].iloc[-2]
+                        change = ((current - prev) / prev) * 100
+                        st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                else:
+                    st.info(f"📊 {info['name']} 데이터 준비 중...")
         
         st.divider()
         
-        # 주요 종목
-        st.markdown('<h3><span class="icon-sparkle">🔥</span> 주요 종목</h3>', unsafe_allow_html=True)
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if not market_data["samsung"].empty:
-                samsung_close = market_data["samsung"]["Close"].iloc[-1]
-                samsung_prev = market_data["samsung"]["Close"].iloc[-2] if len(market_data["samsung"]) > 1 else samsung_close
-                samsung_change = ((samsung_close - samsung_prev) / samsung_prev) * 100
-                
-                st.metric(
-                    "삼성전자", 
-                    f"{samsung_close:,.0f}원",
-                    f"{samsung_change:+.2f}%"
-                )
-        
-        with col2:
-            if not market_data["skhynix"].empty:
-                skhynix_close = market_data["skhynix"]["Close"].iloc[-1]
-                skhynix_prev = market_data["skhynix"]["Close"].iloc[-2] if len(market_data["skhynix"]) > 1 else skhynix_close
-                skhynix_change = ((skhynix_close - skhynix_prev) / skhynix_prev) * 100
-                
-                st.metric(
-                    "SK하이닉스", 
-                    f"{skhynix_close:,.0f}원",
-                    f"{skhynix_change:+.2f}%"
-                )
+        st.caption("🎲 새로고침 버튼을 누르면 다른 종목을 볼 수 있어요!")
 
 # 탭2: AI 상담
 with tab2:
@@ -399,9 +460,14 @@ with tab2:
                         if not market_data["kospi"].empty:
                             kospi_close = market_data["kospi"]["Close"].iloc[-1]
                             market_context += f"현재 코스피: {kospi_close:,.2f}\n"
-                        if not market_data["samsung"].empty:
-                            samsung_close = market_data["samsung"]["Close"].iloc[-1]
-                            market_context += f"삼성전자: {samsung_close:,.0f}원\n"
+                        
+                        # 랜덤 종목 정보도 추가
+                        stock_info = "\n추천 종목:\n"
+                        for ticker, info in market_data["stocks"].items():
+                            if not info["data"].empty:
+                                price = info["data"]["Close"].iloc[-1]
+                                stock_info += f"- {info['name']}: {price:,.0f}원\n"
+                        market_context += stock_info
                     
                     response = client.chat.completions.create(
                         model="llama-3.1-8b-instant",
