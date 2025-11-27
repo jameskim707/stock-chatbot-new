@@ -1,234 +1,480 @@
-
-
 import streamlit as st
 from groq import Groq
 import os
 import random
 import yfinance as yf
+import pandas as pd
 from datetime import datetime
 import plotly.graph_objects as go
 import time
 
-# -----------------------------------------------------------
 # 페이지 설정
-# -----------------------------------------------------------
 st.set_page_config(
-    page_title="GINI GUARDIAN",
+    page_title="GINI Guardian",
     page_icon="🛡️",
     layout="wide"
 )
 
-# -----------------------------------------------------------
-# 커스텀 CSS (안정화 버전: h1 충돌 제거)
-# -----------------------------------------------------------
+# 커스텀 CSS (생동감 MAX!)
 st.markdown("""
 <style>
-/* 경고 메시지 깜빡임 */
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.05); }
-}
-.warning-pulse {
-    animation: pulse 1s ease-in-out infinite;
-    font-size: 1.2rem;
-}
-
-/* 메트릭 카드 */
-[data-testid="stMetricValue"] {
-    font-size: 2rem !important;
-    transition: all 0.3s ease;
-}
-div[data-testid="stMetric"]:hover {
-    transform: scale(1.05);
-}
-
-/* 버튼 효과 */
-.stButton button {
-    transition: all 0.3s ease;
-}
-.stButton button:hover {
-    transform: scale(1.05);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-
-/* 아이콘 애니메이션 */
-@keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-}
-.icon-bounce {
-    display: inline-block;
-    animation: bounce 2s ease-in-out infinite;
-}
+    /* 경고 메시지 강하게 깜빡임 */
+    @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.8; transform: scale(1.05); }
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
+    }
+    
+    .warning-pulse {
+        animation: pulse 1s ease-in-out infinite;
+        font-size: 1.2rem;
+    }
+    
+    /* 메트릭 카드 호버 효과 */
+    [data-testid="stMetricValue"] {
+        font-size: 2rem !important;
+        transition: all 0.3s ease;
+    }
+    
+    div[data-testid="stMetric"]:hover {
+        transform: scale(1.05);
+        transition: all 0.3s ease;
+    }
+    
+    /* 버튼 애니메이션 */
+    .stButton button {
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .stButton button:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    .stButton button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+    
+    .stButton button:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+    
+    /* 아이콘 애니메이션 */
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    @keyframes sparkle {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+    
+    .icon-bounce {
+        display: inline-block;
+        animation: bounce 2s ease-in-out infinite;
+    }
+    
+    .icon-rotate {
+        display: inline-block;
+        animation: rotate 3s linear infinite;
+    }
+    
+    .icon-sparkle {
+        display: inline-block;
+        animation: sparkle 1.5s ease-in-out infinite;
+    }
+    
+    /* 탭 호버 효과 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        transition: all 0.3s ease;
+    }
+    
+    .stTabs [data-baseweb="tab"]:hover {
+        transform: translateY(-2px);
+    }
+    
+    /* 제목 반짝임 */
+    h1 {
+        animation: sparkle 3s ease-in-out infinite;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# -----------------------------------------------------------
 # Groq API 초기화
-# -----------------------------------------------------------
 @st.cache_resource
 def init_groq():
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        st.error("❌ GROQ_API_KEY가 설정되지 않았습니다.")
+    try:
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            st.error("GROQ_API_KEY가 설정되지 않았습니다.")
+            st.stop()
+        return Groq(api_key=api_key)
+    except Exception as e:
+        st.error(f"Groq 클라이언트 초기화 실패: {e}")
         st.stop()
-    return Groq(api_key=api_key)
 
 client = init_groq()
 
-# -----------------------------------------------------------
-# 경고 메시지 사전
-# -----------------------------------------------------------
+# 경고 메시지 데이터베이스
 경고_메시지 = {
-    "몰빵": ["야 정신차려!", "몰빵은 라면에 하고 주식은 분산해라."],
-    "올인": ["또 올인? 제정신이냐.", "한번만 더 올인하면 계좌 장례식이다."],
-    "빚투": ["빚투는 절대 금지!", "가족들 생각해라 제발."],
-    "레버리지": ["레버리지는 칼이다. 잘못 쓰면 너 찍힌다."],
-    "물타기": ["물타기 중독 멈춰!", "지금 물타면 더 깊이 빠진다."],
-    "단타": ["단타 중독이다 이건.", "단타하려면 멘탈 10개 필요하다."],
-    "추천": ["남 말 믿지마라.", "추천 따라가다 패가망신한다."]
+    "몰빵": [
+        "야, 정신을 안드로메다에다 갔다났냐?",
+        "몰빵은 스파게티 한그릇에 해라, 주식에 몰빵하다간 홈리스 된다",
+        "야, 애들 학원비 어떡할 건데? 또 날리게?",
+        "그 돈으로 와이프 선물 하나 사줘. 그게 더 행복해"
+    ],
+    "올인": [
+        "또? 진심 또 하려고? 미쳤냐?",
+        "테트리스는 내려가면 빠지지만 주식은 내려가면 폐가망신이다",
+        "월세일 다음 주인데 정신 차려",
+        "오늘 치킨 시켜먹어. 그게 확률 더 높아"
+    ],
+    "빚투": [
+        "가족들한테 뭐라고 할 건데? 또 날렸다고?",
+        "명절에 처가 가서 뭐라고 할 건데? '주식 또 날렸습니다'?",
+        "오늘밤에 니 와이프한테 바가지 긁히고 쫓겨나고 싶어?",
+        "부모님 용돈 드려. 그게 진짜 효도야"
+    ],
+    "레버리지": [
+        "야, 계좌 보고 정신 차려. -15%야 지금",
+        "내일 아침에 통장 보고 소주 한 병 각인데 괜찮아?",
+        "지금 니가 날리려는 돈이 니 한 달 식비야",
+        "자식 책 10권 살 수 있는 돈이야"
+    ],
+    "물타기": [
+        "야, 지금까지 몇 번 말렸는데 또 하게?",
+        "내일 아침에 후회할 거 빤한데 왜 그래?",
+        "주식에 감정을 넣어서 하다간 골로가버린다, 이 친구야!",
+        "확신이 없는데 남의 말듣고 들어가다간 저녁에 소주 또 깐다"
+    ],
+    "단타": [
+        "지금 화났지? 그래서 또 하려는 거지? 멈춰!",
+        "또? 진심 또 하려고? 미쳤냐?",
+        "오늘 치킨 시켜먹어. 그게 확률 더 높아",
+        "야, 지금까지 몇 번 말렸는데 또 하게?"
+    ],
+    "추천": [
+        "확신이 없는데 남의 말듣고 들어가다간 저녁에 소주 또 깐다",
+        "ㅇㅇ이 추천했다고? 그 사람 계좌 본 적 있어?",
+        "주식에 감정을 넣어서 하다간 골로가버린다, 이 친구야!",
+        "내일 아침에 후회할 거 빤한데 왜 그래?"
+    ]
 }
 
-# -----------------------------------------------------------
-# 주가 데이터 가져오기
-# -----------------------------------------------------------
+# 실시간 시장 데이터 가져오기
 @st.cache_data(ttl=300)
 def get_market_data():
     try:
-        kospi = yf.Ticker("^KS11").history(period="5d", interval="1h")
-        kosdaq = yf.Ticker("^KQ11").history(period="5d", interval="1h")
-        usd = yf.Ticker("KRW=X").history(period="5d")
-        samsung = yf.Ticker("005930.KS").history(period="5d", interval="1h")
-        hynix = yf.Ticker("000660.KS").history(period="5d", interval="1h")
+        kospi = yf.Ticker("^KS11")
+        kospi_data = kospi.history(period="5d", interval="1h")
+        
+        kosdaq = yf.Ticker("^KQ11")
+        kosdaq_data = kosdaq.history(period="5d", interval="1h")
+        
+        usd_krw = yf.Ticker("KRW=X")
+        usd_data = usd_krw.history(period="5d")
+        
+        samsung = yf.Ticker("005930.KS")
+        samsung_data = samsung.history(period="5d", interval="1h")
+        
+        skhynix = yf.Ticker("000660.KS")
+        skhynix_data = skhynix.history(period="5d", interval="1h")
+        
         return {
-            "kospi": kospi, "kosdaq": kosdaq, "usd": usd,
-            "samsung": samsung, "hynix": hynix
+            "kospi": kospi_data,
+            "kosdaq": kosdaq_data,
+            "usd_krw": usd_data,
+            "samsung": samsung_data,
+            "skhynix": skhynix_data
         }
-    except:
+    except Exception as e:
         return None
 
-# -----------------------------------------------------------
-# 차트 함수
-# -----------------------------------------------------------
-def mini_chart(data, title):
-    if data is None or data.empty: return None
+# 차트 생성 함수
+def create_mini_chart(data, title):
+    if data is None or data.empty or len(data) < 2:
+        return None
+    
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=data.index, y=data["Close"],
-        mode="lines", line=dict(color="#00D9FF", width=2)
+        x=data.index,
+        y=data['Close'],
+        mode='lines',
+        line=dict(color='#00D9FF', width=2),
+        fill='tozeroy',
+        fillcolor='rgba(0, 217, 255, 0.1)'
     ))
+    
     fig.update_layout(
-        title=title, height=200,
+        title=title,
+        height=200,
         margin=dict(l=0, r=0, t=30, b=0),
         xaxis=dict(showgrid=False, showticklabels=False),
-        yaxis=dict(showgrid=True, gridcolor="rgba(255,255,255,0.1)"),
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)"
+        yaxis=dict(showgrid=True, gridcolor='rgba(255,255,255,0.1)'),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
     )
+    
     return fig
 
-# -----------------------------------------------------------
-# ⭐ 메인 UI 타이틀 — 여기서 정상적으로 바뀐다
-# -----------------------------------------------------------
-st.markdown(
-    "<h1>🛡️ <b>GINI GUARDIAN</b></h1>",
-    unsafe_allow_html=True
-)
-st.caption("과도한 투자로부터 당신을 지키는 AI 친구 | Made by Miracle")
+# 메인 UI
+st.markdown('<h1><span class="icon-sparkle">🛡️</span> GINI Guardian</h1>', unsafe_allow_html=True)
+st.caption("과도한 투자로부터 당신을 지키는 AI 친구 | Made by Miracle 🔥")
 
-# -----------------------------------------------------------
-# 탭 구성
-# -----------------------------------------------------------
-tab1, tab2, tab3 = st.tabs(["📊 실시간 시장", "💬 AI 상담", "📈 내 포트폴리오"])
+# 탭 생성
+tab1, tab2, tab3 = st.tabs([
+    "📊 실시간 시장", 
+    "💬 AI 상담", 
+    "📈 내 포트폴리오"
+])
 
-# -----------------------------------------------------------
-# TAB 1 — 실시간 시장
-# -----------------------------------------------------------
+# 탭1: 실시간 시장
 with tab1:
-    st.subheader("📈 오늘의 시장")
-
-    with st.spinner("데이터 불러오는 중..."):
-        market = get_market_data()
-
-    if market:
+    # 새로고침 버튼
+    col_refresh, col_time = st.columns([1, 4])
+    with col_refresh:
+        if st.button("🔄 새로고침", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+    
+    with col_time:
+        st.info(f"⏰ 마지막 업데이트: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (5분마다 자동 갱신)")
+    
+    st.markdown('<h2><span class="icon-bounce">📈</span> 오늘의 시장</h2>', unsafe_allow_html=True)
+    
+    # 데이터 로드 with 스피너
+    with st.spinner('📡 실시간 데이터 불러오는 중...'):
+        market_data = get_market_data()
+    
+    if market_data:
+        # 주요 지수
         col1, col2, col3 = st.columns(3)
-
-        kospi = market["kospi"]
-        kosdaq = market["kosdaq"]
-        usd = market["usd"]
-
-        if not kospi.empty:
-            now = kospi["Close"].iloc[-1]
-            prev = kospi["Close"].iloc[-2]
-            st.metric("코스피", f"{now:,.2f}", f"{(now-prev)/prev*100:+.2f}%")
-
-        if not kosdaq.empty:
-            now = kosdaq["Close"].iloc[-1]
-            prev = kosdaq["Close"].iloc[-2]
-            st.metric("코스닥", f"{now:,.2f}", f"{(now-prev)/prev*100:+.2f}%")
-
-        if not usd.empty:
-            st.metric("USD/KRW", f"{usd['Close'].iloc[-1]:,.2f}", "환율")
-
+        
+        with col1:
+            if not market_data["kospi"].empty:
+                kospi_close = market_data["kospi"]["Close"].iloc[-1]
+                kospi_prev = market_data["kospi"]["Close"].iloc[-2] if len(market_data["kospi"]) > 1 else kospi_close
+                kospi_change = ((kospi_close - kospi_prev) / kospi_prev) * 100
+                
+                st.metric(
+                    "📊 코스피", 
+                    f"{kospi_close:,.2f}",
+                    f"{kospi_change:+.2f}%",
+                    delta_color="normal"
+                )
+        
+        with col2:
+            if not market_data["kosdaq"].empty:
+                kosdaq_close = market_data["kosdaq"]["Close"].iloc[-1]
+                kosdaq_prev = market_data["kosdaq"]["Close"].iloc[-2] if len(market_data["kosdaq"]) > 1 else kosdaq_close
+                kosdaq_change = ((kosdaq_close - kosdaq_prev) / kosdaq_prev) * 100
+                
+                st.metric(
+                    "📊 코스닥", 
+                    f"{kosdaq_close:,.2f}",
+                    f"{kosdaq_change:+.2f}%",
+                    delta_color="normal"
+                )
+        
+        with col3:
+            if not market_data["usd_krw"].empty:
+                usd_close = market_data["usd_krw"]["Close"].iloc[-1]
+                st.markdown(f'<div class="icon-sparkle">💵</div>', unsafe_allow_html=True)
+                st.metric(
+                    "USD/KRW", 
+                    f"{usd_close:,.2f}원",
+                    "환율"
+                )
+        
         st.divider()
-        c1, c2 = st.columns(2)
-
-        if not market["samsung"].empty:
-            fig = mini_chart(market["samsung"], "삼성전자 (5일)")
-            st.plotly_chart(fig, use_container_width=True)
-
-        if not market["hynix"].empty:
-            fig = mini_chart(market["hynix"], "SK하이닉스 (5일)")
-            st.plotly_chart(fig, use_container_width=True)
-
-# -----------------------------------------------------------
-# TAB 2 — AI 상담
-# -----------------------------------------------------------
-with tab2:
-    st.subheader("💬 투자 상담")
-
-    user_input = st.text_input("질문을 입력하세요")
-
-    if st.button("보내기"):
-        if user_input.strip() == "":
-            st.warning("메시지를 입력해주세요.")
-        else:
-            # 위험 키워드 감지
-            for k in 경고_메시지.keys():
-                if k in user_input:
-                    st.markdown(
-                        f"<div class='warning-pulse'>🚨 {random.choice(경고_메시지[k])}</div>",
-                        unsafe_allow_html=True
-                    )
-                    st.error("⚠️ 위험한 투자 패턴 감지!")
-
-            with st.spinner("AI 분석 중..."):
-                response = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
-                    messages=[
-                        {"role": "system", "content": "너는 GINI GUARDIAN 투자 방어 챗봇이다."},
-                        {"role": "user", "content": user_input}
-                    ]
+        
+        # 차트 섹션
+        st.markdown('<h3><span class="icon-bounce">📈</span> 최근 5일 차트</h3>', unsafe_allow_html=True)
+        
+        chart_col1, chart_col2 = st.columns(2)
+        
+        with chart_col1:
+            if not market_data["kospi"].empty and len(market_data["kospi"]) >= 2:
+                fig_kospi = create_mini_chart(market_data["kospi"], "코스피 (5일)")
+                if fig_kospi:
+                    st.plotly_chart(fig_kospi, use_container_width=True)
+            else:
+                st.info("📊 코스피 차트 데이터 준비 중...")
+        
+        with chart_col2:
+            if not market_data["samsung"].empty and len(market_data["samsung"]) >= 2:
+                fig_samsung = create_mini_chart(market_data["samsung"], "삼성전자 (5일)")
+                if fig_samsung:
+                    st.plotly_chart(fig_samsung, use_container_width=True)
+            else:
+                st.info("📊 삼성전자 차트 데이터 준비 중...")
+        
+        st.divider()
+        
+        # 주요 종목
+        st.markdown('<h3><span class="icon-sparkle">🔥</span> 주요 종목</h3>', unsafe_allow_html=True)
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if not market_data["samsung"].empty:
+                samsung_close = market_data["samsung"]["Close"].iloc[-1]
+                samsung_prev = market_data["samsung"]["Close"].iloc[-2] if len(market_data["samsung"]) > 1 else samsung_close
+                samsung_change = ((samsung_close - samsung_prev) / samsung_prev) * 100
+                
+                st.metric(
+                    "삼성전자", 
+                    f"{samsung_close:,.0f}원",
+                    f"{samsung_change:+.2f}%"
+                )
+        
+        with col2:
+            if not market_data["skhynix"].empty:
+                skhynix_close = market_data["skhynix"]["Close"].iloc[-1]
+                skhynix_prev = market_data["skhynix"]["Close"].iloc[-2] if len(market_data["skhynix"]) > 1 else skhynix_close
+                skhynix_change = ((skhynix_close - skhynix_prev) / skhynix_prev) * 100
+                
+                st.metric(
+                    "SK하이닉스", 
+                    f"{skhynix_close:,.0f}원",
+                    f"{skhynix_change:+.2f}%"
                 )
 
-            st.info(response.choices[0].message.content)
+# 탭2: AI 상담
+with tab2:
+    st.markdown('<h2><span class="icon-bounce">💬</span> AI 투자 상담</h2>', unsafe_allow_html=True)
+    
+    user_input = st.text_input("메시지를 입력하세요:", key="chat_input", placeholder="예: 삼성전자 지금 사도 될까요?")
+    
+    if st.button("🚀 보내기", type="primary", use_container_width=True):
+        if user_input:
+            # 위험 키워드 감지
+            위험_감지 = False
+            감지된_키워드 = None
+            
+            for 키워드 in 경고_메시지.keys():
+                if 키워드 in user_input:
+                    위험_감지 = True
+                    감지된_키워드 = 키워드
+                    break
+            
+            # 위험 감지 시 랜덤 경고 표시 (강하게 깜빡이는 효과)
+            if 위험_감지:
+                경고 = random.choice(경고_메시지[감지된_키워드])
+                st.markdown(f'<div class="warning-pulse">🚨 <b>{경고}</b></div>', unsafe_allow_html=True)
+                st.error("⚠️ 잠깐! 한 번 더 생각해보세요.")
+            
+            # AI 응답 with 로딩
+            with st.spinner('🤖 AI가 생각하는 중...'):
+                try:
+                    # 시장 데이터를 컨텍스트로 제공
+                    market_context = ""
+                    if market_data:
+                        if not market_data["kospi"].empty:
+                            kospi_close = market_data["kospi"]["Close"].iloc[-1]
+                            market_context += f"현재 코스피: {kospi_close:,.2f}\n"
+                        if not market_data["samsung"].empty:
+                            samsung_close = market_data["samsung"]["Close"].iloc[-1]
+                            market_context += f"삼성전자: {samsung_close:,.0f}원\n"
+                    
+                    response = client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": (
+                                    "너는 GINI Guardian이다. "
+                                    "사용자의 과도한 투자, 몰빵, 단타 중독을 방지하고 "
+                                    "심리적 안정과 위험 감지를 돕는 방어형 챗봇이다. "
+                                    "친근하지만 단호하게 조언해줘. "
+                                    f"현재 시장 상황:\n{market_context}"
+                                )
+                            },
+                            {"role": "user", "content": user_input}
+                        ],
+                        stream=False
+                    )
+                    
+                    st.write("### 🔸 GINI Guardian 응답:")
+                    st.info(response.choices[0].message.content)
+                    
+                except Exception as e:
+                    st.error(f"❌ API 호출 오류: {e}")
+        else:
+            st.warning("💬 메시지를 입력해주세요.")
 
-# -----------------------------------------------------------
-# TAB 3 — 포트폴리오
-# -----------------------------------------------------------
+# 탭3: 내 포트폴리오
 with tab3:
-    st.subheader("📈 포트폴리오")
-    st.info("추가 기능 개발 중입니다!")
+    st.markdown('<h2><span class="icon-bounce">📈</span> 내 포트폴리오</h2>', unsafe_allow_html=True)
+    st.info("🚧 개발 중입니다. 곧 만나보실 수 있습니다!")
+    
+    # 간단한 입력 폼
+    with st.form("portfolio_form"):
+        st.subheader("💰 투자 프로필 설정")
+        보유현금 = st.number_input("보유 현금 (만원)", min_value=0, value=500, step=100)
+        투자성향 = st.selectbox("투자 성향", ["안정형 🛡️", "중립형 ⚖️", "공격형 🔥"])
+        submitted = st.form_submit_button("📊 분석하기", use_container_width=True)
+        
+        if submitted:
+            with st.spinner('분석 중...'):
+                time.sleep(1)
+            st.success(f"💰 보유 현금: {보유현금}만원")
+            st.success(f"📊 투자 성향: {투자성향}")
+            st.balloons()
 
-# -----------------------------------------------------------
 # 사이드바
-# -----------------------------------------------------------
 with st.sidebar:
-    st.markdown("### 🛡️ GINI GUARDIAN")
-    st.write("주식 과잉 방어 챗봇")
+    st.markdown('<div class="icon-sparkle">🛡️</div>', unsafe_allow_html=True)
+    st.markdown("### GINI Guardian")
+    st.markdown("**주식 과잉 방어 챗봇**")
     st.markdown("---")
-    st.write("📊 실시간 시장 모니터링")
-    st.write("💬 AI 투자 상담")
-    st.write("🚨 위험 패턴 경고")
+    
+    st.markdown("#### 📌 주요 기능")
+    st.markdown("""
+    - <span class="icon-bounce">📊</span> 실시간 시장 모니터링
+    - <span class="icon-bounce">📈</span> 5일 차트 제공
+    - <span class="icon-sparkle">💬</span> AI 투자 상담
+    - <span class="icon-sparkle">🚨</span> 위험 거래 경고
+    - 📈 포트폴리오 분석 (준비중)
+    """, unsafe_allow_html=True)
+    
     st.markdown("---")
-    st.caption("Made by Miracle")
+    st.markdown("#### ✨ 생동감 요소")
+    st.markdown("""
+    - 📈 실시간 차트
+    - 🔄 자동 새로고침
+    - 💫 아이콘 애니메이션
+    - 🚨 경고 깜빡임
+    - 🎯 로딩 효과
+    """)
+    
+    st.markdown("---")
+    st.markdown('<div class="icon-rotate">🔥</div> <b>Made by Miracle</b>', unsafe_allow_html=True)
+    st.caption("Version 3.0 - Complete Edition")
+    st.caption("© 2024 GINI Guardian")
