@@ -15,19 +15,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# 커스텀 CSS (생동감 MAX!)
+# 커스텀 CSS
 st.markdown("""
 <style>
     /* 경고 메시지 강하게 깜빡임 */
     @keyframes pulse {
         0%, 100% { opacity: 1; transform: scale(1); }
         50% { opacity: 0.8; transform: scale(1.05); }
-    }
-    
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
     }
     
     .warning-pulse {
@@ -58,33 +52,10 @@ st.markdown("""
         box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
     
-    .stButton button::before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.3);
-        transform: translate(-50%, -50%);
-        transition: width 0.6s, height 0.6s;
-    }
-    
-    .stButton button:hover::before {
-        width: 300px;
-        height: 300px;
-    }
-    
     /* 아이콘 애니메이션 */
     @keyframes bounce {
         0%, 100% { transform: translateY(0); }
         50% { transform: translateY(-10px); }
-    }
-    
-    @keyframes rotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
     }
     
     @keyframes sparkle {
@@ -97,14 +68,19 @@ st.markdown("""
         animation: bounce 2s ease-in-out infinite;
     }
     
+    .icon-sparkle {
+        display: inline-block;
+        animation: sparkle 1.5s ease-in-out infinite;
+    }
+    
     .icon-rotate {
         display: inline-block;
         animation: rotate 3s linear infinite;
     }
     
-    .icon-sparkle {
-        display: inline-block;
-        animation: sparkle 1.5s ease-in-out infinite;
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
     
     /* 탭 호버 효과 */
@@ -120,7 +96,7 @@ st.markdown("""
         transform: translateY(-2px);
     }
     
-    /* AI 상담 탭 강조 (두 번째 탭) */
+    /* AI 상담 탭 강조 */
     .stTabs [data-baseweb="tab-list"] button:nth-child(2) {
         animation: pulse 2s ease-in-out infinite;
         background: linear-gradient(90deg, rgba(255,100,100,0.2), rgba(100,100,255,0.2));
@@ -134,19 +110,21 @@ st.markdown("""
     
     /* 안내 배너 */
     .ai-banner {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 15px;
-        border-radius: 10px;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #4a90e2 100%);
+        padding: 25px;
+        border-radius: 15px;
         text-align: center;
-        margin: 20px 0;
-        animation: pulse 3s ease-in-out infinite;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        margin: 25px 0;
+        animation: pulse 2s ease-in-out infinite;
+        box-shadow: 0 8px 25px rgba(30, 60, 114, 0.5);
     }
     
     .ai-banner h3 {
         color: white;
         margin: 0;
-        font-size: 1.3rem;
+        font-size: 1.6rem;
+        font-weight: bold;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -214,38 +192,23 @@ client = init_groq()
 
 # 관심 종목 풀
 관심종목_풀 = {
-    # 반도체 & AI
-    "005930.KS": "삼성전자",
-    "000660.KS": "SK하이닉스",
-    
-    # IT & 플랫폼
-    "035420.KS": "NAVER",
-    "035720.KS": "카카오",
-    "323410.KS": "카카오뱅크",
-    
-    # 바이오 & 헬스케어
-    "207940.KS": "삼성바이오로직스",
-    "068270.KS": "셀트리온",
-    "326030.KS": "SK바이오팜",
-    
-    # 2차전지
-    "373220.KS": "LG에너지솔루션",
-    "006400.KS": "삼성SDI",
-    
-    # 방산 & 조선
-    "012450.KS": "한화에어로스페이스",
-    "009540.KS": "HD한국조선해양",
-    
-    # 엔터테인먼트
-    "352820.KS": "하이브",
-    "041510.KS": "SM",
-    
-    # 금융
-    "086790.KS": "하나금융지주",
-    "071050.KS": "한국금융지주",
-    
-    # 로봇
-    "277810.KS": "레인보우로보틱스",
+    "005930.KS": {"name": "삼성전자", "code": "005930"},
+    "000660.KS": {"name": "SK하이닉스", "code": "000660"},
+    "035420.KS": {"name": "NAVER", "code": "035420"},
+    "035720.KS": {"name": "카카오", "code": "035720"},
+    "323410.KS": {"name": "카카오뱅크", "code": "323410"},
+    "207940.KS": {"name": "삼성바이오로직스", "code": "207940"},
+    "068270.KS": {"name": "셀트리온", "code": "068270"},
+    "326030.KS": {"name": "SK바이오팜", "code": "326030"},
+    "373220.KS": {"name": "LG에너지솔루션", "code": "373220"},
+    "006400.KS": {"name": "삼성SDI", "code": "006400"},
+    "012450.KS": {"name": "한화에어로스페이스", "code": "012450"},
+    "009540.KS": {"name": "HD한국조선해양", "code": "009540"},
+    "352820.KS": {"name": "하이브", "code": "352820"},
+    "041510.KS": {"name": "SM", "code": "041510"},
+    "086790.KS": {"name": "하나금융지주", "code": "086790"},
+    "071050.KS": {"name": "한국금융지주", "code": "071050"},
+    "277810.KS": {"name": "레인보우로보틱스", "code": "277810"},
 }
 
 # 실시간 시장 데이터 가져오기
@@ -268,7 +231,8 @@ def get_market_data():
         for ticker in selected_tickers:
             stock = yf.Ticker(ticker)
             stocks_data[ticker] = {
-                "name": 관심종목_풀[ticker],
+                "name": 관심종목_풀[ticker]["name"],
+                "code": 관심종목_풀[ticker]["code"],
                 "data": stock.history(period="5d", interval="1h")
             }
         
@@ -340,7 +304,7 @@ with tab1:
     
     st.markdown('<h2><span class="icon-bounce">📈</span> 오늘의 시장</h2>', unsafe_allow_html=True)
     
-    # 데이터 로드 with 스피너
+    # 데이터 로드
     with st.spinner('📡 실시간 데이터 불러오는 중...'):
         market_data = get_market_data()
     
@@ -386,32 +350,34 @@ with tab1:
         
         st.divider()
         
-        # 차트 섹션
+        # 랜덤 종목 4개 섹션
         st.markdown('<h3><span class="icon-bounce">📈</span> 오늘의 추천 종목 (랜덤 4개)</h3>', unsafe_allow_html=True)
         
-        # 2x2 그리드로 4개 종목 표시
-        chart_row1_col1, chart_row1_col2 = st.columns(2)
-        chart_row2_col1, chart_row2_col2 = st.columns(2)
+        # 2x2 그리드
+        row1_col1, row1_col2 = st.columns(2)
+        row2_col1, row2_col2 = st.columns(2)
         
         stock_items = list(market_data["stocks"].items())
         
         # 첫 번째 줄
-        with chart_row1_col1:
+        with row1_col1:
             if len(stock_items) > 0:
                 ticker, info = stock_items[0]
                 if not info["data"].empty and len(info["data"]) >= 2:
                     fig = create_mini_chart(info["data"], f"{info['name']} (5일)")
                     if fig:
                         st.plotly_chart(fig, use_container_width=True)
-                        # 현재가 표시
                         current = info["data"]["Close"].iloc[-1]
                         prev = info["data"]["Close"].iloc[-2]
                         change = ((current - prev) / prev) * 100
                         st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                        # 네이버 증권 링크
+                        naver_url = f"https://finance.naver.com/item/main.nhn?code={info['code']}"
+                        st.link_button("📈 상세정보 보기", naver_url, use_container_width=True)
                 else:
                     st.info(f"📊 {info['name']} 데이터 준비 중...")
         
-        with chart_row1_col2:
+        with row1_col2:
             if len(stock_items) > 1:
                 ticker, info = stock_items[1]
                 if not info["data"].empty and len(info["data"]) >= 2:
@@ -422,11 +388,13 @@ with tab1:
                         prev = info["data"]["Close"].iloc[-2]
                         change = ((current - prev) / prev) * 100
                         st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                        naver_url = f"https://finance.naver.com/item/main.nhn?code={info['code']}"
+                        st.link_button("📈 상세정보 보기", naver_url, use_container_width=True)
                 else:
                     st.info(f"📊 {info['name']} 데이터 준비 중...")
         
         # 두 번째 줄
-        with chart_row2_col1:
+        with row2_col1:
             if len(stock_items) > 2:
                 ticker, info = stock_items[2]
                 if not info["data"].empty and len(info["data"]) >= 2:
@@ -437,10 +405,12 @@ with tab1:
                         prev = info["data"]["Close"].iloc[-2]
                         change = ((current - prev) / prev) * 100
                         st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                        naver_url = f"https://finance.naver.com/item/main.nhn?code={info['code']}"
+                        st.link_button("📈 상세정보 보기", naver_url, use_container_width=True)
                 else:
                     st.info(f"📊 {info['name']} 데이터 준비 중...")
         
-        with chart_row2_col2:
+        with row2_col2:
             if len(stock_items) > 3:
                 ticker, info = stock_items[3]
                 if not info["data"].empty and len(info["data"]) >= 2:
@@ -451,11 +421,12 @@ with tab1:
                         prev = info["data"]["Close"].iloc[-2]
                         change = ((current - prev) / prev) * 100
                         st.metric(info['name'], f"{current:,.0f}원", f"{change:+.2f}%")
+                        naver_url = f"https://finance.naver.com/item/main.nhn?code={info['code']}"
+                        st.link_button("📈 상세정보 보기", naver_url, use_container_width=True)
                 else:
                     st.info(f"📊 {info['name']} 데이터 준비 중...")
         
         st.divider()
-        
         st.caption("🎲 새로고침 버튼을 누르면 다른 종목을 볼 수 있어요!")
 
 # 탭2: AI 상담
@@ -476,13 +447,13 @@ with tab2:
                     감지된_키워드 = 키워드
                     break
             
-            # 위험 감지 시 랜덤 경고 표시 (강하게 깜빡이는 효과)
+            # 위험 감지 시 랜덤 경고 표시
             if 위험_감지:
                 경고 = random.choice(경고_메시지[감지된_키워드])
                 st.markdown(f'<div class="warning-pulse">🚨 <b>{경고}</b></div>', unsafe_allow_html=True)
                 st.error("⚠️ 잠깐! 한 번 더 생각해보세요.")
             
-            # AI 응답 with 로딩
+            # AI 응답
             with st.spinner('🤖 AI가 생각하는 중...'):
                 try:
                     # 시장 데이터를 컨텍스트로 제공
@@ -531,7 +502,6 @@ with tab3:
     st.markdown('<h2><span class="icon-bounce">📈</span> 내 포트폴리오</h2>', unsafe_allow_html=True)
     st.info("🚧 개발 중입니다. 곧 만나보실 수 있습니다!")
     
-    # 간단한 입력 폼
     with st.form("portfolio_form"):
         st.subheader("💰 투자 프로필 설정")
         보유현금 = st.number_input("보유 현금 (만원)", min_value=0, value=500, step=100)
@@ -555,15 +525,16 @@ with st.sidebar:
     # 큰 AI 상담 버튼
     st.markdown("""
     <div style="
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 20px;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #4a90e2 100%);
+        padding: 25px;
         border-radius: 15px;
         text-align: center;
         margin: 20px 0;
         cursor: pointer;
-        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        box-shadow: 0 8px 25px rgba(30, 60, 114, 0.6);
+        animation: pulse 2s ease-in-out infinite;
     ">
-        <h2 style="color: white; margin: 0;">🤖</h2>
+        <h2 style="color: white; margin: 0; font-size: 3rem;">🤖</h2>
         <h3 style="color: white; margin: 10px 0;">AI에게 물어보기</h3>
         <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 0.9rem;">
             24시간 무료 상담<br/>
@@ -584,17 +555,6 @@ with st.sidebar:
     """, unsafe_allow_html=True)
     
     st.markdown("---")
-    st.markdown("#### ✨ 생동감 요소")
-    st.markdown("""
-    - 📈 실시간 차트
-    - 🎲 랜덤 종목 추천
-    - 🔄 자동 새로고침
-    - 💫 아이콘 애니메이션
-    - 🚨 경고 깜빡임
-    - 🎯 로딩 효과
-    """)
-    
-    st.markdown("---")
     st.markdown('<div class="icon-rotate">🔥</div> <b>Made by Miracle</b>', unsafe_allow_html=True)
-    st.caption("Version 3.5 - Random Stocks")
+    st.caption("Version 4.0 - With Naver Links")
     st.caption("© 2024 GINI Guardian")
