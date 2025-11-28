@@ -116,22 +116,27 @@ class ChartEngine:
         hynix_base = 110000
         hynix_prices = hynix_base + np.cumsum(np.random.randn(30) * 800)
         
+        # DataFrame으로 변환 후 rolling 적용
+        kospi_series = pd.Series(kospi_prices)
+        samsung_series = pd.Series(samsung_prices)
+        hynix_series = pd.Series(hynix_prices)
+        
         self.kospi_data = pd.DataFrame({
             'Date': dates,
-            'KOSPI': kospi_prices,
-            'MA20': kospi_prices.rolling(window=5).mean()
+            'KOSPI': kospi_series.values,
+            'MA20': kospi_series.rolling(window=5).mean().values
         })
         
         self.samsung_data = pd.DataFrame({
             'Date': dates,
-            'Price': samsung_prices,
-            'MA20': samsung_prices.rolling(window=5).mean()
+            'Price': samsung_series.values,
+            'MA20': samsung_series.rolling(window=5).mean().values
         })
         
         self.hynix_data = pd.DataFrame({
             'Date': dates,
-            'Price': hynix_prices,
-            'MA20': hynix_prices.rolling(window=5).mean()
+            'Price': hynix_series.values,
+            'MA20': hynix_series.rolling(window=5).mean().values
         })
     
     def plot_kospi_chart(self):
