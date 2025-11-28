@@ -781,20 +781,180 @@ with tab2:
 # 탭3: 내 포트폴리오
 with tab3:
     st.markdown('<h2><span class="icon-bounce">📈</span> 내 포트폴리오</h2>', unsafe_allow_html=True)
-    st.info("🚧 개발 중입니다. 곧 만나보실 수 있습니다!")
     
-    with st.form("portfolio_form"):
-        st.subheader("💰 투자 프로필 설정")
-        보유현금 = st.number_input("보유 현금 (만원)", min_value=0, value=500, step=100)
-        투자성향 = st.selectbox("투자 성향", ["안정형 🛡️", "중립형 ⚖️", "공격형 🔥"])
-        submitted = st.form_submit_button("📊 분석하기", use_container_width=True)
+    # 포트폴리오 세션 상태 초기화
+    if 'portfolio' not in st.session_state:
+        st.session_state.portfolio = []
+    
+    # 1단계: 보유 종목 입력
+    st.markdown('<h3>🔥 1단계: 보유 종목 등록</h3>', unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        stock_name = st.text_input("종목명", placeholder="예: 삼성전자")
+    
+    with col2:
+        buy_price = st.number_input("매입가 (원)", min_value=0, value=0, step=1000)
+    
+    with col3:
+        quantity = st.number_input("수량 (주)", min_value=0, value=0, step=1)
+    
+    stock_code = st.text_input("종목 코드", placeholder="예: 005930.KS")
+    
+    if st.button("✅ 종목 추가", use_container_width=True, type="primary"):
+        if stock_name and buy_price > 0 and quantity > 0 and stock_code:
+            new_stock = {
+                "name": stock_name,
+                "code": stock_code,
+                "buy_price": buy_price,
+                "quantity": quantity,
+                "buy_amount": buy_price * quantity
+            }
+            st.session_state.portfolio.append(new_stock)
+            st.success(f"✅ {stock_name}이(가) 추가되었습니다!")
+        else:
+            st.error("❌ 모든 필드를 올바르게 입력해주세요.")
+    
+    st.divider()
+    
+    # 2단계: 수익률 계산
+    if st.session_state.portfolio:
+        st.markdown('<h3>🔥 2단계: 수익률 분석</h3>', unsafe_allow_html=True)
         
-        if submitted:
-            with st.spinner('분석 중...'):
-                time.sleep(1)
-            st.success(f"💰 보유 현금: {보유현금}만원")
-            st.success(f"📊 투자 성향: {투자성향}")
-            st.balloons()
+        with st.spinner('📊 실시간 가격 불러오는 중...'):
+            portfolio_data = []
+            total_buy_amount = 0
+            total_current_amount = 0
+            
+            for stock in st.session_state.portfolio:
+                try:
+                    ticker = yf.Ticker(stock['code'])
+                    current_price = ticker.history(period="1d")['Close'].iloc[-1]
+                    current_amount = current_price * stock['quantity']
+                    profit_loss = current_amount - stock['buy_amount']
+                    profit_loss_rate = (profit_loss / stock['buy_amount']) * 100 if stock['buy_amount'] > 0 else 0
+                    
+                    portfolio_data.append({
+                        "종목명": stock['name'],
+                        "매입가": f"{stock['buy_price']:,.0f}원",
+                        "현재가": f"{current_price:,.0f}원",
+                        "수량": f"{stock['quantity']}주",
+                        "매입액": f"{stock['buy_amount']:,.0f}원",
+                        "현재액": f"{current_amount:,.0f}원",
+                        "수익/손실": f"{profit_loss:,.0f}원",
+                        "수익률": f"{profit_loss_rate:+.2f}%"
+                    })
+                    
+                    total_buy_amount += stock['buy_amount']
+                    total_current_amount += current_amount
+                    
+                except Exception as e:
+                    st.warning(f"⚠️ {stock['name']} 가격 조회 실패: {str(e)}")
+            
+            # 수익률 테이블 표시
+            if portfolio_data:
+                st.dataframe(portfolio_data, use_container_width=True)
+                
+                # 전체 포트폴리오 수익률
+                st.divider()
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.metric("📊 총 매입액", f"{total_buy_amount:,.0f}원")
+                
+                with col2:
+                    st.metric("💰 총 현재액", f"{total_current_amount:,.0f}원")
+                
+                with col3:
+                    total_profit_loss = total_current_amount - total_buy_amount
+                    total_profit_rate = (total_profit_loss / total_buy_amount) * 100 if total_buy_amount > 0 else 0
+                    
+                    if total_profit_loss >= 0:
+                        st.metric("📈 총 수익/손실", f"{total_profit_loss:,.0f}원", f"{total_profit_rate:+.2f}%")
+                    else:
+                        st.metric("📉 총 수익/손실", f"{total_profit_loss:,.0f}원", f"{total_profit_rate:+.2f}%")
+                
+                st.divider()
+                
+                # 3단계: 리스크 분석
+                st.markdown('<h3>🔥 3단계: 리스크 분석</h3>', unsafe_allow_html=True)
+                
+                # 종목별 비중 계산
+                risk_analysis = []
+                max_single_stock = 0
+                high_volatility_count = 0
+                
+                for stock in st.session_state.portfolio:
+                    stock_ratio = (stock['buy_amount'] / total_buy_amount) * 100 if total_buy_amount > 0 else 0
+                    risk_analysis.append({
+                        "종목": stock['name'],
+                        "비중": f"{stock_ratio:.1f}%"
+                    })
+                    max_single_stock = max(max_single_stock, stock_ratio)
+                
+                st.write("**종목별 비중:**")
+                st.dataframe(risk_analysis, use_container_width=True)
+                
+                # 위험 경고
+                st.write("**⚠️ 위험 분석:**")
+                
+                if max_single_stock > 40:
+                    st.error(f"🚨 단일 종목 비중이 {max_single_stock:.1f}%로 높습니다! (권장: 20% 이하)")
+                    st.info("💡 포트폴리오 다양화를 추천합니다.")
+                elif max_single_stock > 20:
+                    st.warning(f"⚠️ 단일 종목 비중이 {max_single_stock:.1f}%로 중간 수준입니다. (권장: 20% 이하)")
+                else:
+                    st.success(f"✅ 종목 다양화가 잘 되어있습니다. (최대 비중: {max_single_stock:.1f}%)")
+                
+                st.divider()
+                
+                # 4단계: 맞춤 조언
+                st.markdown('<h3>🔥 4단계: GINI Guardian 맞춤 조언</h3>', unsafe_allow_html=True)
+                
+                advice_parts = []
+                advice_parts.append("📋 **당신의 포트폴리오 분석:**\n")
+                
+                # 수익 상황에 따른 조언
+                if total_profit_loss > 0:
+                    advice_parts.append(f"✅ 현재 {total_profit_rate:+.2f}% 수익 상태입니다.")
+                    advice_parts.append("💡 이 상태를 유지하되, 욕심내지 않도록 주의하세요.\n")
+                else:
+                    advice_parts.append(f"⚠️ 현재 {total_profit_rate:+.2f}% 손실 상태입니다.")
+                    advice_parts.append("💡 장기 관점에서 회복을 기대하되, 추가 손실 방지가 중요합니다.\n")
+                
+                # 포트폴리오 구성에 따른 조언
+                if max_single_stock > 40:
+                    advice_parts.append("🚨 **즉시 조치 필요:**")
+                    advice_parts.append(f"• 단일 종목 비중이 {max_single_stock:.1f}%로 너무 높습니다.")
+                    advice_parts.append("• 다른 종목으로 분산 투자하세요.\n")
+                
+                # 투자 성향별 조언
+                advice_parts.append("📊 **포트폴리오 개선 방안:**")
+                advice_parts.append("• 변동성이 높은 종목은 전체의 30% 이하로 유지하세요.")
+                advice_parts.append("• ETF나 안정적인 대형주로 기초를 다지세요.")
+                advice_parts.append("• 급등/급락에 흔들리지 마세요.")
+                advice_parts.append("• 정기적으로 포트폴리오를 점검하세요.\n")
+                
+                # 마지막 조언
+                advice_parts.append("💪 **GINI Guardian의 조언:**")
+                advice_parts.append("당신의 포트폴리오는 당신의 투자 철학을 담고 있습니다.")
+                advice_parts.append("단기 수익보다 장기 안정성을 우선하세요.")
+                advice_parts.append("감정적 결정은 피하고, 계획에 따라 실행하세요.")
+                
+                st.info("\n".join(advice_parts))
+        
+        # 포트폴리오 관리
+        st.divider()
+        st.markdown('<h3>📋 포트폴리오 관리</h3>', unsafe_allow_html=True)
+        
+        if st.button("🗑️ 포트폴리오 초기화", type="secondary", use_container_width=True):
+            st.session_state.portfolio = []
+            st.success("포트폴리오가 초기화되었습니다.")
+            st.rerun()
+    
+    else:
+        st.info("📝 위에서 종목을 추가하면 포트폴리오 분석이 시작됩니다!")
 
 # 사이드바
 with st.sidebar:
