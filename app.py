@@ -188,6 +188,8 @@ with tab1:
         st.session_state.counsel_submitted = False
     if 'counsel_result' not in st.session_state:
         st.session_state.counsel_result = None
+    if 'last_input' not in st.session_state:
+        st.session_state.last_input = ""
     
     # 입력 폼
     st.markdown("**당신의 투자 고민을 말씀해주세요:**")
@@ -197,6 +199,11 @@ with tab1:
         key="counsel_textarea"
     )
     
+    # 입력이 바뀌면 자동으로 이전 결과 초기화
+    if user_input != st.session_state.last_input and user_input.strip():
+        st.session_state.counsel_submitted = False
+        st.session_state.counsel_result = None
+    
     # 분석 버튼
     col1, col2, col3 = st.columns([1, 1, 2])
     
@@ -204,6 +211,7 @@ with tab1:
         if st.button("🔍 분석하기", use_container_width=True, type="primary"):
             if user_input.strip():
                 st.session_state.counsel_submitted = True
+                st.session_state.last_input = user_input
                 
                 # 감정 감지
                 has_loss = any(word in user_input for word in ["잃었", "손실", "떨어", "내려", "깍였", "빠졌"])
