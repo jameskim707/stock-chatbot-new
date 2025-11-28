@@ -52,6 +52,26 @@ ANIMATION_CSS = """
         background-clip: text;
     }
     
+    /* 🔥 HOT 뱃지: 반짝이고 깜빡이는 효과 */
+    @keyframes hot-pulse {
+        0%, 100% { 
+            opacity: 1;
+            transform: scale(1);
+            text-shadow: 0 0 5px #ff4500;
+        }
+        50% { 
+            opacity: 0.7;
+            transform: scale(1.1);
+            text-shadow: 0 0 15px #ff6347, 0 0 25px #ff4500;
+        }
+    }
+    
+    .hot-badge {
+        animation: hot-pulse 1.5s infinite;
+        display: inline-block;
+        font-weight: bold;
+    }
+    
     /* 위험 신호: 깜빡임만 */
     .danger-pulse { 
         animation: gentle-blink 2s infinite; 
@@ -130,16 +150,29 @@ with col3:
 st.divider()
 
 # ============================================================================
-# 탭
+# 탭 (HOT 뱃지)
 # ============================================================================
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 상담", "📰 뉴스", "📈 차트", "💼 포트폴리오", "⚙️ 설정"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "💬 상담 🔥", 
+    "📰 뉴스", 
+    "📈 차트", 
+    "💼 포트폴리오", 
+    "⚙️ 설정"
+])
 
 # ============================================================================
 # TAB 1: 상담
 # ============================================================================
 
 with tab1:
+    # HOT 뱃지 애니메이션
+    st.markdown("""
+    <div style="text-align: center; margin-bottom: 15px;">
+        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 HOT 상담</span>
+    </div>
+    """, unsafe_allow_html=True)
+    
     # 상담 아이콘 애니메이션 (위아래 움직임 + 깜빡임)
     st.markdown('<div class="counsel-icon-animated">💬</div>', unsafe_allow_html=True)
     
