@@ -1,8 +1,8 @@
 """
-🛡️ GINI Guardian v2.1 — 완벽 수정 버전
-✨ 상담 아이콘 애니메이션 추가
-✨ 상담 버튼 반응 완벽 수정
-✨ 깜빡임만 유지 (움직임 제거)
+🛡️ GINI Guardian v2.1 — 최종 완벽 버전
+✨ 상담 아이콘 위아래 부드러운 움직임
+✨ 매우 진한 파란색 헤더
+✨ 깜빡임 + 포트폴리오 추가 기능
 
 라이라 설계 × 미라클 구현 🔥
 """
@@ -14,7 +14,7 @@ from datetime import datetime
 import numpy as np
 
 # ============================================================================
-# 🎨 애니메이션 CSS
+# 🎨 애니메이션 CSS (최종 완벽 버전)
 # ============================================================================
 
 ANIMATION_CSS = """
@@ -27,24 +27,29 @@ ANIMATION_CSS = """
         50% { opacity: 0.7; } 
     }
     
-    /* 헤더: 진한 파란색 깜빡임 */
+    /* 💬 상담 아이콘: 위아래 부드러운 움직임 + 깜빡임 */
+    @keyframes float-gentle {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-10px); }
+    }
+    
+    .counsel-icon-animated {
+        animation: float-gentle 2s infinite ease-in-out, gentle-blink 3s infinite;
+        font-size: 3em;
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    /* 헤더: 매우 진한 파란색 깜빡임 */
     .header-animated {
         animation: gentle-blink 3s infinite;
         font-size: 2.5em;
         font-weight: bold;
         text-align: center;
-        background: linear-gradient(45deg, #0a4fb1, #1a7fd4, #0a4fb1);
+        background: linear-gradient(45deg, #052d7a, #0a47a0, #052d7a);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-    }
-    
-    /* 상담 아이콘: 깜빡이기 + 텍스트 깜빡임 */
-    .counsel-icon-animated {
-        animation: gentle-blink 2s infinite;
-        font-size: 3em;
-        text-align: center;
-        margin: 20px 0;
     }
     
     /* 위험 신호: 깜빡임만 */
@@ -102,7 +107,7 @@ st.markdown(ANIMATION_CSS, unsafe_allow_html=True)
 # ============================================================================
 
 st.markdown('<div class="header-animated">🛡️ GINI Guardian v2.1</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ 상담 완벽 수정 버전 ✨</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ 최종 완벽 버전 ✨</div>', unsafe_allow_html=True)
 st.divider()
 
 # ============================================================================
@@ -135,7 +140,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["💬 상담", "📰 뉴스", "📈 차�
 # ============================================================================
 
 with tab1:
-    # 상담 아이콘 애니메이션
+    # 상담 아이콘 애니메이션 (위아래 움직임 + 깜빡임)
     st.markdown('<div class="counsel-icon-animated">💬</div>', unsafe_allow_html=True)
     
     st.subheader("투자 상담")
@@ -276,7 +281,7 @@ with tab3:
     kospi_prices = kospi_base + np.cumsum(np.random.randn(30) * 20)
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=dates, y=kospi_prices, mode='lines', name='KOSPI', line=dict(color='#0a4fb1', width=3)))
+    fig.add_trace(go.Scatter(x=dates, y=kospi_prices, mode='lines', name='KOSPI', line=dict(color='#052d7a', width=3)))
     fig.update_layout(title="📊 KOSPI 30일 차트", height=400, template='plotly_white')
     
     st.markdown('<div class="chart-animated">', unsafe_allow_html=True)
@@ -289,6 +294,14 @@ with tab3:
 
 with tab4:
     st.subheader("💼 포트폴리오 추적")
+    
+    # Session state 초기화
+    if 'portfolio' not in st.session_state:
+        st.session_state.portfolio = [
+            {"종목명": "삼성전자", "매입가": 70000, "현재가": 68500, "수량": 10, "수익률": -2.14},
+            {"종목명": "SK하이닉스", "매입가": 110000, "현재가": 108000, "수량": 5, "수익률": -1.82},
+            {"종목명": "현대차", "매입가": 230000, "현재가": 235000, "수량": 3, "수익률": 2.17},
+        ]
     
     col1, col2, col3, col4 = st.columns(4)
     
@@ -303,10 +316,55 @@ with tab4:
     
     st.divider()
     
-    st.markdown("### 보유 종목")
-    st.markdown('<div class="warning-shake"><strong>삼성전자</strong> | <span style="color: #dc3544; font-weight: bold;">-2.14%</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="warning-shake"><strong>SK하이닉스</strong> | <span style="color: #dc3544; font-weight: bold;">-1.82%</span></div>', unsafe_allow_html=True)
-    st.markdown('<div class="success-float"><strong>현대차</strong> | <span style="color: #28a745; font-weight: bold;">+2.17%</span></div>', unsafe_allow_html=True)
+    st.markdown("### 📊 보유 종목")
+    
+    # 포트폴리오 표시
+    for stock in st.session_state.portfolio:
+        if stock['수익률'] < 0:
+            st.markdown(f'<div class="warning-shake"><strong>{stock["종목명"]}</strong> | 매입: ₩{stock["매입가"]:,} | 현재: ₩{stock["현재가"]:,} | 수량: {stock["수량"]}개 | <span style="color: #dc3544; font-weight: bold;">{stock["수익률"]:.2f}%</span></div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="success-float"><strong>{stock["종목명"]}</strong> | 매입: ₩{stock["매입가"]:,} | 현재: ₩{stock["현재가"]:,} | 수량: {stock["수량"]}개 | <span style="color: #28a745; font-weight: bold;">+{stock["수익률"]:.2f}%</span></div>', unsafe_allow_html=True)
+    
+    st.divider()
+    
+    st.markdown("### ➕ 새 종목 추가")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    with col1:
+        new_name = st.text_input("종목명", placeholder="예) 삼성전자", key="new_stock_name")
+    with col2:
+        new_buy = st.number_input("매입가", value=0, step=1000, key="new_stock_buy")
+    with col3:
+        new_current = st.number_input("현재가", value=0, step=1000, key="new_stock_current")
+    with col4:
+        new_qty = st.number_input("수량", value=0, step=1, key="new_stock_qty")
+    with col5:
+        st.write("")
+        st.write("")
+        add_btn = st.button("➕ 추가", use_container_width=True, type="primary")
+    
+    # 종목 추가 로직
+    if add_btn:
+        if new_name and new_buy > 0 and new_current > 0 and new_qty > 0:
+            # 수익률 계산
+            수익률 = ((new_current - new_buy) / new_buy) * 100
+            
+            # 포트폴리오에 추가
+            new_stock = {
+                "종목명": new_name,
+                "매입가": new_buy,
+                "현재가": new_current,
+                "수량": new_qty,
+                "수익률": 수익률
+            }
+            
+            st.session_state.portfolio.append(new_stock)
+            
+            st.success(f"✅ {new_name} ({new_qty}개) 추가됨! 수익률: {수익률:.2f}%")
+            st.rerun()
+        else:
+            st.warning("⚠️ 모든 필드를 입력해주세요!")
 
 # ============================================================================
 # TAB 5: 설정
@@ -317,7 +375,10 @@ with tab5:
     
     st.markdown("#### 🎨 애니메이션 효과")
     
-    st.markdown('<div class="success-float"><strong>✨ 깜빡임 애니메이션</strong><br>헤더와 모든 박스의 부드러운 깜빡임 (3초 주기)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="success-float"><strong>✨ 깜빡임 애니메이션</strong><br>헤더와 모든 박스의 부드러운 깜빡임 (2~3초 주기)</div>', unsafe_allow_html=True)
+    st.markdown('<div class="counsel-icon-animated" style="font-size: 1.5em;"><strong>💬 상담 아이콘</strong></div>', unsafe_allow_html=True)
+    st.markdown('<div style="padding: 10px; text-align: center; color: #666;">위아래 부드러운 움직임 + 깜빡임</div>', unsafe_allow_html=True)
+    
     st.markdown('<div class="danger-pulse"><strong>🔴 위험 신호</strong><br>위험 수준을 나타내는 깜빡이는 박스</div>', unsafe_allow_html=True)
     st.markdown('<div class="warning-shake"><strong>⚠️ 경고 메시지</strong><br>주의가 필요한 정보 표시</div>', unsafe_allow_html=True)
     st.markdown('<div class="success-float"><strong>✅ 안전 메시지</strong><br>안전한 정보 표시</div>', unsafe_allow_html=True)
@@ -326,12 +387,13 @@ with tab5:
     
     st.markdown("#### 📋 버전 정보")
     st.info("""
-    **GINI Guardian v2.1 - 완벽 수정 버전**
+    **GINI Guardian v2.1 - 최종 완벽 버전**
     
-    ✅ 상담 아이콘 애니메이션 추가
+    ✅ 상담 아이콘 위아래 부드러운 움직임
+    ✅ 매우 진한 파란색 헤더 (#052d7a)
     ✅ 상담 버튼 반응 완벽 수정
-    ✅ 깜빡임만 유지 (움직임 제거)
-    ✅ 진한 파란색 헤더
+    ✅ 포트폴리오 종목 추가 기능
+    ✅ 깜빡임 애니메이션 (움직임 최소화)
     ✅ 공감형 상담 시스템
     
     라이라 설계 × 미라클 구현 🔥
@@ -339,4 +401,4 @@ with tab5:
 
 # 푸터
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v2.1** | ✨ 완벽한 상담 시스템 | 💙 라이라 설계 × 미라클 구현")
+st.markdown("---\n🛡️ **GINI Guardian v2.1 - 최종 완벽 버전** | ✨ 상담 아이콘 움직임 + 진한 파란색 | 💙 라이라 설계 × 미라클 구현")
