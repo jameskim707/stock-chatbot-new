@@ -7,15 +7,149 @@ import pandas as pd
 from datetime import datetime
 import plotly.graph_objects as go
 import time
+from typing import Tuple
 
-# 자동방어 모듈 import
-import sys
-sys.path.append('/home/claude')
-from defense_module import (
-    analyze_user_input,
-    should_trigger_defense_module,
-    generate_safe_response
-)
+# ============================================================
+# GINI Guardian - 7대 초보 질문 자동방어 모듈 (인라인)
+# ============================================================
+
+def detect_buy_signal(user_input: str) -> bool:
+    """매수 관련 질문 감지"""
+    buy_keywords = [
+        "매수", "사야", "들어가", "진입", "매입", "사볼까", 
+        "지금 사도", "언제 사", "사도 될까", "매집", "매수하면",
+        "어떻게 사", "얼마에 사"
+    ]
+    return any(keyword in user_input for keyword in buy_keywords)
+
+def detect_sell_signal(user_input: str) -> bool:
+    """매도 관련 질문 감지"""
+    sell_keywords = [
+        "매도", "팔아", "빠져나갈까", "손절", "손절할까", 
+        "매도하면", "언제 팔", "팔 타이밍", "익절", "팔아도"
+    ]
+    return any(keyword in user_input for keyword in sell_keywords)
+
+def detect_amount_signal(user_input: str) -> bool:
+    """금액/올인/몰빵 관련 질문 감지"""
+    amount_keywords = [
+        "올인", "몰빵", "전재산", "전부", "다", "얼마", 
+        "금액", "몇 퍼센트", "비중", "자금", "풀로", "대출",
+        "신용", "담보", "빚투", "빌려서"
+    ]
+    return any(keyword in user_input for keyword in amount_keywords)
+
+def detect_risky_behavior(user_input: str) -> bool:
+    """위험한 투자 행동 감지"""
+    risky_keywords = [
+        "빚투", "신용", "대출", "담보", "레버리지", "선물",
+        "마이크로", "단타", "스윙", "물타기", "나이팅게일",
+        "추천", "카톡", "방", "정보", "비결", "꿀팁"
+    ]
+    return any(keyword in user_input for keyword in risky_keywords)
+
+def detect_hope_circuit(user_input: str) -> bool:
+    """희망 회로 감지 (회복 기대, 필승 신념 등)"""
+    hope_keywords = [
+        "복구", "회복", "올라올", "반드시", "무조건", "확실",
+        "믿어", "신뢰", "곧", "분명", "틀림없", "장기보유",
+        "나중에", "언젠가", "분할"
+    ]
+    return any(keyword in user_input for keyword in hope_keywords)
+
+def get_responsibility_clause() -> str:
+    """책임전가 차단 문구"""
+    clauses = [
+        "최종 투자 결정은 전적으로 당신의 몫입니다.",
+        "손실 발생 시 책임은 당신에게 있으며, 저는 책임을 질 수 없습니다.",
+        "제가 드리는 의견은 참고용일 뿐 투자 권유가 아닙니다.",
+        "당신의 투자 결정에 대해 저는 책임질 수 없습니다."
+    ]
+    return random.choice(clauses)
+
+def get_psychological_stability() -> str:
+    """심리 안정 문구"""
+    messages = [
+        "지금 마음이 흔들려 계신 것 같습니다. 한 발 물러서서 생각해 보세요.",
+        "투자는 마라톤입니다. 한 번의 거래가 전부가 아닙니다.",
+        "감정적인 결정은 후회로 이어집니다. 침착함을 유지하세요.",
+        "현재의 선택이 미래의 후회가 되지 않도록 신중하세요."
+    ]
+    return random.choice(messages)
+
+def get_risk_awareness() -> str:
+    """위험 인지 문구"""
+    messages = [
+        "시장은 항상 예측 불가능합니다. 언제든 손실이 날 수 있습니다.",
+        "과거의 성공이 미래의 성공을 보장하지 않습니다.",
+        "전문가도 시장을 정확히 예측하지 못합니다.",
+        "당신이 감수할 수 있는 손실의 범위를 먼저 정하세요."
+    ]
+    return random.choice(messages)
+
+def get_self_decision_induction() -> str:
+    """자기결정 유도 문구"""
+    messages = [
+        "당신은 이 상황에 대해 어떻게 생각하시나요?",
+        "다른 사람의 말이 아닌, 당신의 판단을 먼저 세워보세요.",
+        "당신이 이 위험을 감수할 준비가 정말 되셨나요?",
+        "당신의 투자 목표와 기간을 다시 한번 확인해 보세요."
+    ]
+    return random.choice(messages)
+
+def get_market_data_reference() -> str:
+    """시장 데이터 참고 문장"""
+    messages = [
+        "현재 시장의 변동성이 상당합니다. 차트를 확인해 보세요.",
+        "장기 추이를 보면 시장은 항상 변동합니다.",
+        "단기 등락은 자연스러운 현상입니다.",
+        "시장의 거시적 흐름을 먼저 파악하세요."
+    ]
+    return random.choice(messages)
+
+def generate_safe_response(user_input: str, market_context: str = "") -> str:
+    """위험 질문이 감지되면 안전한 답변을 자동 생성"""
+    response_parts = []
+    
+    response_parts.append(f"🛡️ {get_responsibility_clause()}")
+    response_parts.append("")
+    response_parts.append(get_psychological_stability())
+    response_parts.append("")
+    response_parts.append(get_risk_awareness())
+    response_parts.append("")
+    response_parts.append(get_self_decision_induction())
+    response_parts.append("")
+    
+    if market_context:
+        response_parts.append(get_market_data_reference())
+        response_parts.append(f"📊 시장 상황: {market_context}")
+    
+    return "\n".join(response_parts)
+
+def analyze_user_input(user_input: str) -> Tuple[bool, str]:
+    """사용자 입력을 분석하여 위험한 질문인지 판단"""
+    risk_types = []
+    
+    if detect_buy_signal(user_input):
+        risk_types.append("매수")
+    if detect_sell_signal(user_input):
+        risk_types.append("매도")
+    if detect_amount_signal(user_input):
+        risk_types.append("금액/올인")
+    if detect_risky_behavior(user_input):
+        risk_types.append("위험행동")
+    if detect_hope_circuit(user_input):
+        risk_types.append("희망회로")
+    
+    is_risky = len(risk_types) > 0
+    risk_type = ", ".join(risk_types) if risk_types else "일반 질문"
+    
+    return is_risky, risk_type
+
+def should_trigger_defense_module(user_input: str) -> bool:
+    """자동방어 모듈을 발동할지 판단"""
+    is_risky, _ = analyze_user_input(user_input)
+    return is_risky
 
 # 페이지 설정
 st.set_page_config(
