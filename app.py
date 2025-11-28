@@ -30,7 +30,7 @@ ANIMATION_CSS = """
         font-size: 2.5em;
         font-weight: bold;
         text-align: center;
-        background: linear-gradient(45deg, #ff6b6b, #ff8787, #ff6b6b);
+        background: linear-gradient(45deg, #1f77b4, #4a9eff, #1f77b4);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
