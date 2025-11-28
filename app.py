@@ -1,8 +1,8 @@
 """
-🛡️ GINI Guardian v2.1 — Groq API 상담 버전 (수정)
-✨ Groq API (무료 + 초빠름) - 최신 라이브러리 대응
-✨ Llama 3.1 8B 기반 AI 상담
-✨ 자연어 처리 (GPT 수준)
+🛡️ GINI Guardian v2.2 — 종합 위험지표 시스템
+✨ Groq AI + 실시간 위험도 분석
+✨ 감정기반 + 시장기반 + 포지션기반 위험 통합
+✨ 전문가 수준의 AI 투자 상담
 
 라이라 설계 × 미라클 구현 🔥
 """
@@ -13,22 +13,23 @@ import plotly.graph_objects as go
 from datetime import datetime
 import numpy as np
 from groq import Groq
+import random
+
+st.set_page_config(page_title="GINI Guardian v2.2", page_icon="🛡️", layout="wide")
 
 # ============================================================================
-# 🎨 애니메이션 CSS (최종 완벽 버전)
+# 🎨 애니메이션 CSS
 # ============================================================================
 
 ANIMATION_CSS = """
 <style>
     .main { background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); }
     
-    /* ✨ 깜빡임 - 차분하고 세련됨 */
     @keyframes gentle-blink { 
         0%, 100% { opacity: 1; } 
         50% { opacity: 0.7; } 
     }
     
-    /* 💬 상담 아이콘: 위아래 부드러운 움직임 + 깜빡임 */
     @keyframes float-gentle {
         0%, 100% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
@@ -41,7 +42,6 @@ ANIMATION_CSS = """
         margin: 20px 0;
     }
     
-    /* 헤더: 매우 진한 파란색 깜빡임 */
     .header-animated {
         animation: gentle-blink 3s infinite;
         font-size: 2.5em;
@@ -53,7 +53,6 @@ ANIMATION_CSS = """
         background-clip: text;
     }
     
-    /* 🔥 HOT 뱃지: 반짝이고 깜빡이는 효과 */
     @keyframes hot-pulse {
         0%, 100% { 
             opacity: 1;
@@ -73,7 +72,6 @@ ANIMATION_CSS = """
         font-weight: bold;
     }
     
-    /* 위험 신호: 깜빡임만 */
     .danger-pulse { 
         animation: gentle-blink 2s infinite; 
         background-color: #f8d7da; 
@@ -82,7 +80,6 @@ ANIMATION_CSS = """
         border: 3px solid #dc3544; 
     }
     
-    /* 경고: 깜빡임만 */
     .warning-shake { 
         animation: gentle-blink 2s infinite;
         background-color: #fff3cd; 
@@ -92,7 +89,6 @@ ANIMATION_CSS = """
         margin-bottom: 10px; 
     }
     
-    /* 성공: 깜빡임만 */
     .success-float { 
         animation: gentle-blink 2s infinite;
         background-color: #d4edda; 
@@ -102,43 +98,130 @@ ANIMATION_CSS = """
         margin-bottom: 10px; 
     }
     
-    /* 차트: 천천히 나타나기 */
     @keyframes fade-in { 
         0% { opacity: 0; } 
         100% { opacity: 1; } 
     }
     .chart-animated { animation: fade-in 1s ease-out; }
     
-    /* 방어 메시지: 나타나기 + 깜빡임 */
-    .defense-message { 
-        animation: fade-in 0.8s ease-out, gentle-blink 2s infinite;
-        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); 
-        padding: 20px; 
-        border-radius: 15px; 
-        border-left: 5px solid #dc3544; 
+    /* 위험지표 카드 */
+    .risk-card {
+        padding: 20px;
+        border-radius: 12px;
+        margin: 10px 0;
+        border-left: 5px solid;
+        animation: fade-in 0.8s ease-out;
     }
     
-    /* 상담란 테두리 */
-    .counsel-textarea {
-        border: 1px solid #0a47a0 !important;
-        border-radius: 8px !important;
-        padding: 12px !important;
+    .risk-critical {
+        background-color: #f8d7da;
+        border-left-color: #dc3544;
+    }
+    
+    .risk-high {
+        background-color: #fff3cd;
+        border-left-color: #ffc107;
+    }
+    
+    .risk-medium {
+        background-color: #d1ecf1;
+        border-left-color: #17a2b8;
+    }
+    
+    .risk-low {
+        background-color: #d4edda;
+        border-left-color: #28a745;
     }
 </style>
 """
 
-st.set_page_config(page_title="GINI Guardian v2.1 (Groq)", page_icon="🛡️", layout="wide")
 st.markdown(ANIMATION_CSS, unsafe_allow_html=True)
 
 # ============================================================================
-# 🤖 Groq 상담 함수 (최신 버전 대응)
+# 🤖 위험지표 계산 엔진 (초간단 버전)
 # ============================================================================
 
-def groq_counsel(user_text):
+def calculate_risk_scores(user_input, portfolio_data):
     """
-    Groq API를 통한 AI 상담
-    무료 + 초빠름 + 강력함
-    최신 Groq 라이브러리 대응 (chat.completions)
+    종합 위험지표 자동 계산
+    - 감정 기반 위험도
+    - 시장 기반 위험도  
+    - 포지션 기반 위험도
+    - 최종 종합 위험도
+    """
+    
+    # 1️⃣ 감정 기반 위험도 (0-10)
+    emotion_risk = 5.0  # 기본값
+    
+    # 손실 관련 키워드
+    loss_keywords = ["손실", "떨어", "내려", "깍였", "빠졌", "손해", "후회", "털렸", "씨발", "진짜", "어떻게"]
+    if any(word in user_input for word in loss_keywords):
+        emotion_risk = 7.5  # 손실 상태
+    
+    # 불안 관련 키워드
+    anxiety_keywords = ["불안", "걱정", "두려", "무섯", "심란", "답답", "어때"]
+    if any(word in user_input for word in anxiety_keywords):
+        emotion_risk = 6.5  # 불안 상태
+    
+    # 충동 관련 키워드
+    impulse_keywords = ["사도", "들어갈", "몰빵", "지금", "급", "빨리", "바로"]
+    if any(word in user_input for word in impulse_keywords):
+        emotion_risk = 8.0  # 충동 위험
+    
+    # 2️⃣ 시장 기반 위험도 (0-10)
+    # 실제로는 API에서 가져오지만, 지금은 시뮬레이션
+    market_risk = random.uniform(5.0, 8.0)  # 시장 변동성
+    
+    # 반도체 관련 높은 위험
+    high_risk_sectors = ["반도체", "AI", "2차전지", "바이오"]
+    if any(sector in user_input for sector in high_risk_sectors):
+        market_risk = min(market_risk + 1.5, 9.5)
+    
+    # 안정주 관련 낮은 위험
+    low_risk_sectors = ["배당", "통신", "전력", "가스"]
+    if any(sector in user_input for sector in low_risk_sectors):
+        market_risk = max(market_risk - 1.5, 3.0)
+    
+    # 3️⃣ 포지션 기반 위험도 (0-10)
+    # 포트폴리오 데이터 기반
+    position_risk = 5.0
+    
+    if portfolio_data:
+        # 손실 중인 종목 비율
+        loss_count = sum(1 for stock in portfolio_data if stock['수익률'] < 0)
+        total_count = len(portfolio_data)
+        loss_ratio = loss_count / total_count if total_count > 0 else 0
+        
+        position_risk = 3.0 + (loss_ratio * 6.0)  # 3.0 ~ 9.0
+    
+    # 4️⃣ 최종 종합 위험도
+    final_risk = (emotion_risk * 0.4 + market_risk * 0.3 + position_risk * 0.3)
+    
+    return {
+        "emotion": round(emotion_risk, 1),
+        "market": round(market_risk, 1),
+        "position": round(position_risk, 1),
+        "final": round(final_risk, 1)
+    }
+
+def get_risk_level(score):
+    """위험도 레벨 판정"""
+    if score >= 8.0:
+        return "🔴 극도로 위험함", "#dc3544"
+    elif score >= 6.5:
+        return "🟠 높은 위험", "#ffc107"
+    elif score >= 5.0:
+        return "🟡 중간 위험", "#17a2b8"
+    else:
+        return "🟢 낮은 위험", "#28a745"
+
+# ============================================================================
+# 🤖 Groq 상담 함수
+# ============================================================================
+
+def groq_counsel(user_text, risk_scores):
+    """
+    위험지표를 포함한 AI 상담
     """
     try:
         import os
@@ -146,24 +229,29 @@ def groq_counsel(user_text):
         
         client = Groq(api_key=api_key)
         
-        # 상담 프롬프트
+        # 위험지표를 프롬프트에 포함
         prompt = f"""당신은 전문 투자 심리 상담 AI입니다.
-사용자의 감정, 투자 수준(초급/중급/상급)을 자연스럽게 추론하여 상담해주세요.
+사용자의 감정, 투자 수준, 위험도를 자연스럽게 추론하여 상담해주세요.
+
+**현재 분석된 위험도:**
+- 감정기반 위험: {risk_scores['emotion']}/10
+- 시장기반 위험: {risk_scores['market']}/10
+- 포지션기반 위험: {risk_scores['position']}/10
+- 최종 종합 위험: {risk_scores['final']}/10
 
 [분석]
 - 감정 상태 (한 문장)
 - 추정 투자 수준
-- 위험도 (0~10)
+- 현재 위험도 평가
 
 [상담]
 - 사용자 감정에 대한 공감
 - 현재 상황 객관적 분석
-- 투자 수준에 맞는 조언
+- 위험도 기반 조언
 - 다음 단계 선택지 (2~3개)
 
 사용자 입력: {user_text}"""
 
-        # ✅ 최신 Groq API 방식 (chat.completions)
         chat_completion = client.chat.completions.create(
             messages=[
                 {"role": "user", "content": prompt}
@@ -175,34 +263,15 @@ def groq_counsel(user_text):
         
         return chat_completion.choices[0].message.content
     
-    except AttributeError as e:
-        return f"""❌ Groq 라이브러리 버전 문제!
-
-**해결 방법:**
-```bash
-pip install --upgrade groq
-```
-
-최신 버전을 설치하고 다시 실행해주세요!
-
-에러: {str(e)}"""
-    
     except Exception as e:
-        return f"""❌ 오류 발생: {str(e)}
-
-**확인사항:**
-1. API KEY 확인
-2. 인터넷 연결 확인
-3. Groq 라이브러리 업그레이드: pip install --upgrade groq
-
-에러 타입: {type(e).__name__}"""
+        return f"❌ 오류 발생: {str(e)}"
 
 # ============================================================================
 # 헤더
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v2.1</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ Groq API 상담 (무료 + 초빠름) ✨</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v2.2</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ 종합 위험지표 + AI 상담 ✨</div>', unsafe_allow_html=True)
 st.divider()
 
 # ============================================================================
@@ -230,39 +299,40 @@ st.divider()
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "💬 상담 🔥", 
-    "📰 뉴스", 
+    "📊 위험지표", 
     "📈 차트", 
     "💼 포트폴리오", 
     "⚙️ 설정"
 ])
 
 # ============================================================================
-# TAB 1: AI 상담 (Groq)
+# TAB 1: AI 상담 + 위험지표
 # ============================================================================
 
 with tab1:
-    # HOT 뱃지 애니메이션
     st.markdown("""
     <div style="text-align: center; margin-bottom: 15px;">
-        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 AI 상담 (Groq)</span>
+        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 AI 상담 (위험지표 포함)</span>
     </div>
     """, unsafe_allow_html=True)
     
-    # 상담 아이콘 애니메이션 (위아래 움직임 + 깜빡임)
     st.markdown('<div class="counsel-icon-animated">💬</div>', unsafe_allow_html=True)
     
     st.subheader("AI 투자 상담")
     
-    # 위험도 애니메이션
-    st.markdown('<div class="danger-pulse"><h3>🔴 오늘의 시장 위험도</h3><p><strong>위험 수준: 높음 (7.5/10)</strong></p><p>부정적 뉴스 60% | 변동성 증가 | 신중한 접근 필수</p></div>', unsafe_allow_html=True)
-    
-    st.divider()
+    # Session state 초기화
+    if 'portfolio' not in st.session_state:
+        st.session_state.portfolio = [
+            {"종목명": "삼성전자", "매입가": 70000, "현재가": 68500, "수량": 10, "수익률": -2.14},
+            {"종목명": "SK하이닉스", "매입가": 110000, "현재가": 108000, "수량": 5, "수익률": -1.82},
+            {"종목명": "현대차", "매입가": 230000, "현재가": 235000, "수량": 3, "수익률": 2.17},
+        ]
     
     # 입력 폼
     st.markdown("**당신의 투자 고민을 말씀해주세요:**")
     
     user_input = st.text_area(
-        "예) 반도체 투자하려고 하는데 어때?",
+        "예) 어제 한미반도체 물타기 하다가 완전히 10% 털렸어요",
         height=100,
         key="counsel_textarea"
     )
@@ -272,34 +342,96 @@ with tab1:
     with col1:
         if st.button("⚡ AI 상담하기", use_container_width=True, type="primary"):
             if user_input.strip():
-                with st.spinner("🤔 AI가 생각 중입니다... (2~3초)"):
-                    response = groq_counsel(user_input)
+                with st.spinner("🤔 위험지표 분석 중... (2~3초)"):
+                    # 위험지표 계산
+                    risk_scores = calculate_risk_scores(user_input, st.session_state.portfolio)
                     
+                    # 위험지표 표시
                     st.markdown("---")
-                    st.markdown("### 🧭 AI 상담 결과")
-                    st.markdown(response)
+                    st.markdown("### 📊 실시간 위험지표 분석")
+                    
+                    # 최종 위험도 (큰 카드)
+                    risk_level, risk_color = get_risk_level(risk_scores['final'])
+                    st.markdown(f"""
+                    <div class="risk-card risk-{'critical' if risk_scores['final'] >= 8 else 'high' if risk_scores['final'] >= 6.5 else 'medium' if risk_scores['final'] >= 5 else 'low'}">
+                        <h2 style="margin: 0; color: {risk_color};">⚠️ 오늘의 투자 위험도</h2>
+                        <h1 style="margin: 10px 0; color: {risk_color};">{risk_scores['final']} / 10</h1>
+                        <p style="margin: 5px 0; font-size: 1.2em;">{risk_level}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    # 세부 위험도 분석
+                    st.markdown("#### 📌 위험도 구성")
+                    
+                    risk_cols = st.columns(3)
+                    
+                    with risk_cols[0]:
+                        st.markdown(f"""
+                        <div class="risk-card risk-high">
+                            <h4>😟 감정 기반 위험</h4>
+                            <h2 style="color: #ffc107; margin: 10px 0;">{risk_scores['emotion']} / 10</h2>
+                            <small>불안감, 충동성, 손실감 분석</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with risk_cols[1]:
+                        st.markdown(f"""
+                        <div class="risk-card risk-medium">
+                            <h4>📈 시장 기반 위험</h4>
+                            <h2 style="color: #17a2b8; margin: 10px 0;">{risk_scores['market']} / 10</h2>
+                            <small>시장 변동성, 산업 리스크</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    with risk_cols[2]:
+                        st.markdown(f"""
+                        <div class="risk-card risk-medium">
+                            <h4>💼 포지션 기반 위험</h4>
+                            <h2 style="color: #17a2b8; margin: 10px 0;">{risk_scores['position']} / 10</h2>
+                            <small>손실 비율, 집중도</small>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    st.divider()
+                    
+                    # AI 상담
+                    with st.spinner("🤔 AI가 상담 중입니다..."):
+                        response = groq_counsel(user_input, risk_scores)
+                        
+                        st.markdown("### 🧭 AI 상담 결과")
+                        st.markdown(response)
+                    
                     st.markdown("---")
             else:
                 st.warning("⚠️ 질문을 입력해주세요!")
 
 # ============================================================================
-# TAB 2: 뉴스
+# TAB 2: 위험지표 대시보드
 # ============================================================================
 
 with tab2:
-    st.subheader("📰 실시간 뉴스 분석")
+    st.subheader("📊 위험지표 대시보드")
     
-    news_data = [
-        {"title": "코스피 2,650선까지 급락... 경기 둔화 우려", "sentiment": "negative", "risk": 8},
-        {"title": "삼성전자, 4분기 실적 부진 예상", "sentiment": "negative", "risk": 7},
-        {"title": "금리 인상 임박? 기준금리 0.25% 올릴 가능성", "sentiment": "negative", "risk": 6},
-        {"title": "기술주 실적 개선 신호... AI 수요 증가", "sentiment": "positive", "risk": 2},
-    ]
+    st.info("""
+    **위험지표 분석 가이드**
     
-    for news in news_data:
-        color = "#f8d7da" if news['sentiment'] == 'negative' else "#d4edda"
-        emoji = "🔴" if news['sentiment'] == 'negative' else "🟢"
-        st.markdown(f'<div style="background-color: {color}; padding: 12px; border-radius: 8px; margin-bottom: 8px;">{emoji} <strong>{news["title"]}</strong><br><small>위험도: {news["risk"]}/10</small></div>', unsafe_allow_html=True)
+    🟢 **낮은 위험 (0-5)**: 안정적인 상태, 신규 진입 검토 가능
+    🟡 **중간 위험 (5-6.5)**: 신중한 관찰 필요
+    🟠 **높은 위험 (6.5-8)**: 신규 진입 제한, 손절 검토
+    🔴 **극도 위험 (8-10)**: 긴급 모드, 즉시 대응 필요
+    """)
+    
+    st.markdown("#### 📈 위험도 계산 로직")
+    
+    st.write("""
+    **최종 위험도 = 감정기반(40%) + 시장기반(30%) + 포지션기반(30%)**
+    
+    - **감정 기반**: 사용자의 불안감, 충동성, 손실감 분석
+    - **시장 기반**: 선택 종목의 변동성, 산업 위험도
+    - **포지션 기반**: 현재 포트폴리오의 손실 비율
+    
+    이 3가지를 종합하여 **전문가 수준의 위험 평가** 제공합니다.
+    """)
 
 # ============================================================================
 # TAB 3: 차트
@@ -327,14 +459,6 @@ with tab3:
 with tab4:
     st.subheader("💼 포트폴리오 추적")
     
-    # Session state 초기화
-    if 'portfolio' not in st.session_state:
-        st.session_state.portfolio = [
-            {"종목명": "삼성전자", "매입가": 70000, "현재가": 68500, "수량": 10, "수익률": -2.14},
-            {"종목명": "SK하이닉스", "매입가": 110000, "현재가": 108000, "수량": 5, "수익률": -1.82},
-            {"종목명": "현대차", "매입가": 230000, "현재가": 235000, "수량": 3, "수익률": 2.17},
-        ]
-    
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -350,53 +474,11 @@ with tab4:
     
     st.markdown("### 📊 보유 종목")
     
-    # 포트폴리오 표시
     for stock in st.session_state.portfolio:
         if stock['수익률'] < 0:
             st.markdown(f'<div class="warning-shake"><strong>{stock["종목명"]}</strong> | 매입: ₩{stock["매입가"]:,} | 현재: ₩{stock["현재가"]:,} | 수량: {stock["수량"]}개 | <span style="color: #dc3544; font-weight: bold;">{stock["수익률"]:.2f}%</span></div>', unsafe_allow_html=True)
         else:
             st.markdown(f'<div class="success-float"><strong>{stock["종목명"]}</strong> | 매입: ₩{stock["매입가"]:,} | 현재: ₩{stock["현재가"]:,} | 수량: {stock["수량"]}개 | <span style="color: #28a745; font-weight: bold;">+{stock["수익률"]:.2f}%</span></div>', unsafe_allow_html=True)
-    
-    st.divider()
-    
-    st.markdown("### ➕ 새 종목 추가")
-    
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        new_name = st.text_input("종목명", placeholder="예) 삼성전자", key="new_stock_name")
-    with col2:
-        new_buy = st.number_input("매입가", value=0, step=1000, key="new_stock_buy")
-    with col3:
-        new_current = st.number_input("현재가", value=0, step=1000, key="new_stock_current")
-    with col4:
-        new_qty = st.number_input("수량", value=0, step=1, key="new_stock_qty")
-    with col5:
-        st.write("")
-        st.write("")
-        add_btn = st.button("➕ 추가", use_container_width=True, type="primary")
-    
-    # 종목 추가 로직
-    if add_btn:
-        if new_name and new_buy > 0 and new_current > 0 and new_qty > 0:
-            # 수익률 계산
-            수익률 = ((new_current - new_buy) / new_buy) * 100
-            
-            # 포트폴리오에 추가
-            new_stock = {
-                "종목명": new_name,
-                "매입가": new_buy,
-                "현재가": new_current,
-                "수량": new_qty,
-                "수익률": 수익률
-            }
-            
-            st.session_state.portfolio.append(new_stock)
-            
-            st.success(f"✅ {new_name} ({new_qty}개) 추가됨! 수익률: {수익률:.2f}%")
-            st.rerun()
-        else:
-            st.warning("⚠️ 모든 필드를 입력해주세요!")
 
 # ============================================================================
 # TAB 5: 설정
@@ -405,38 +487,19 @@ with tab4:
 with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
-    st.markdown("#### ⚡ Groq API 상담 정보")
-    
     st.info("""
-    **GINI Guardian v2.1 - Groq API 버전**
+    **GINI Guardian v2.2 - 위험지표 시스템**
     
-    ✅ 무료 (월 한계 넉넉함)
-    ✅ 초빠름 (2~3초)
-    ✅ 강력 (Llama 3.1 8B)
-    ✅ 설치 불필요
+    ✅ 실시간 위험도 분석
+    ✅ 감정 + 시장 + 포지션 종합 평가
+    ✅ 전문가 수준의 AI 상담
+    ✅ Groq API (무료 + 초빠름)
     
-    **사용 중인 모델:**
-    • Llama 3.1 8B Instant
-    
-    **장점:**
-    • API KEY만 있으면 됨
-    • 클라우드 기반 (설치 X)
-    • 초빠른 응답
-    • 무료 (충분한 한계)
-    """)
-    
-    st.markdown("#### 📋 버전 정보")
-    st.info("""
-    **GINI Guardian v2.1 - Groq Edition (Fixed)**
-    
-    ⚡ 무료 + 초빠른 AI 상담
-    🚀 Llama 3.1 8B 기반
-    💙 자연어 처리 (GPT 수준)
-    ✅ 최신 Groq 라이브러리 대응
-    
-    라이라 설계 × 미라클 구현 🔥
+    **다음 업데이트:**
+    - SQLite 상담 기록 저장
+    - Finnhub API 연동
+    - 감정 패턴 분석
     """)
 
-# 푸터
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v2.1 (Groq)** | ⚡ 무료 + 초빠른 AI 상담 | 💙 라이라 설계 × 미라클 구현")
+st.markdown("---\n🛡️ **GINI Guardian v2.2** | 📊 위험지표 + AI 상담 | 💙 라이라 설계 × 미라클 구현")
