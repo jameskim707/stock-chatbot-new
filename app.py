@@ -1,8 +1,8 @@
 """
-🛡️ GINI Guardian v2.1 — 최종 완벽 버전
-✨ 상담 아이콘 위아래 부드러운 움직임
-✨ 매우 진한 파란색 헤더
-✨ 깜빡임 + 포트폴리오 추가 기능
+🛡️ GINI Guardian v2.1 — Groq API 상담 버전
+✨ Groq API (무료 + 초빠름)
+✨ Llama 3.1 8B 기반 AI 상담
+✨ 자연어 처리 (GPT 수준)
 
 라이라 설계 × 미라클 구현 🔥
 """
@@ -12,6 +12,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime
 import numpy as np
+from groq import Groq
 
 # ============================================================================
 # 🎨 애니메이션 CSS (최종 완벽 버전)
@@ -116,18 +117,68 @@ ANIMATION_CSS = """
         border-radius: 15px; 
         border-left: 5px solid #dc3544; 
     }
+    
+    /* 상담란 테두리 */
+    .counsel-textarea {
+        border: 1px solid #0a47a0 !important;
+        border-radius: 8px !important;
+        padding: 12px !important;
+    }
 </style>
 """
 
-st.set_page_config(page_title="GINI Guardian v2.1", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v2.1 (Groq)", page_icon="🛡️", layout="wide")
 st.markdown(ANIMATION_CSS, unsafe_allow_html=True)
+
+# ============================================================================
+# 🤖 Groq 상담 함수
+# ============================================================================
+
+def groq_counsel(user_text):
+    """
+    Groq API를 통한 AI 상담
+    무료 + 초빠름 + 강력함
+    """
+    try:
+        client = Groq(api_key="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")
+        
+        # 상담 프롬프트
+        prompt = f"""당신은 전문 투자 심리 상담 AI입니다.
+사용자의 감정, 투자 수준(초급/중급/상급)을 자연스럽게 추론하여 상담해주세요.
+
+[분석]
+- 감정 상태 (한 문장)
+- 추정 투자 수준
+- 위험도 (0~10)
+
+[상담]
+- 사용자 감정에 대한 공감
+- 현재 상황 객관적 분석
+- 투자 수준에 맞는 조언
+- 다음 단계 선택지 (2~3개)
+
+사용자 입력: {user_text}"""
+
+        # Groq API 호출 (초빠름!)
+        message = client.messages.create(
+            model="llama-3.1-8b-instant",
+            max_tokens=1024,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        return message.content[0].text
+    
+    except Exception as e:
+        return f"❌ 오류 발생: {str(e)}\n\nAPI KEY를 확인해주세요."
 
 # ============================================================================
 # 헤더
 # ============================================================================
 
 st.markdown('<div class="header-animated">🛡️ GINI Guardian v2.1</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ 최종 완벽 버전 ✨</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ Groq API 상담 (무료 + 초빠름) ✨</div>', unsafe_allow_html=True)
 st.divider()
 
 # ============================================================================
@@ -150,7 +201,7 @@ with col3:
 st.divider()
 
 # ============================================================================
-# 탭 (HOT 뱃지)
+# 탭
 # ============================================================================
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -162,34 +213,26 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 # ============================================================================
-# TAB 1: 상담
+# TAB 1: AI 상담 (Groq)
 # ============================================================================
 
 with tab1:
     # HOT 뱃지 애니메이션
     st.markdown("""
     <div style="text-align: center; margin-bottom: 15px;">
-        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 HOT 상담</span>
+        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 AI 상담 (Groq)</span>
     </div>
     """, unsafe_allow_html=True)
     
     # 상담 아이콘 애니메이션 (위아래 움직임 + 깜빡임)
     st.markdown('<div class="counsel-icon-animated">💬</div>', unsafe_allow_html=True)
     
-    st.subheader("투자 상담")
+    st.subheader("AI 투자 상담")
     
     # 위험도 애니메이션
     st.markdown('<div class="danger-pulse"><h3>🔴 오늘의 시장 위험도</h3><p><strong>위험 수준: 높음 (7.5/10)</strong></p><p>부정적 뉴스 60% | 변동성 증가 | 신중한 접근 필수</p></div>', unsafe_allow_html=True)
     
     st.divider()
-    
-    # Session state를 사용하여 상태 관리
-    if 'counsel_submitted' not in st.session_state:
-        st.session_state.counsel_submitted = False
-    if 'counsel_result' not in st.session_state:
-        st.session_state.counsel_result = None
-    if 'last_input' not in st.session_state:
-        st.session_state.last_input = ""
     
     # 입력 폼
     st.markdown("**당신의 투자 고민을 말씀해주세요:**")
@@ -206,274 +249,25 @@ with tab1:
     """, unsafe_allow_html=True)
     
     user_input = st.text_area(
-        "예) 물타기 후 10% 잃었어...",
+        "예) 반도체 투자하려고 하는데 어때?",
         height=100,
         key="counsel_textarea"
     )
     
-    # 입력이 바뀌면 자동으로 이전 결과 초기화
-    if user_input != st.session_state.last_input and user_input.strip():
-        st.session_state.counsel_submitted = False
-        st.session_state.counsel_result = None
-    
-    # 분석 버튼
     col1, col2, col3 = st.columns([1, 1, 2])
     
     with col1:
-        if st.button("🔍 분석하기", use_container_width=True, type="primary"):
+        if st.button("⚡ AI 상담하기", use_container_width=True, type="primary"):
             if user_input.strip():
-                st.session_state.counsel_submitted = True
-                st.session_state.last_input = user_input
-                
-                # 감정 감지
-                has_loss = any(word in user_input for word in ["잃었", "손실", "떨어", "내려", "깍였", "빠졌"])
-                has_anxiety = any(word in user_input for word in ["불안", "걱정", "두려", "무섭", "괜찮"])
-                has_impulse = any(word in user_input for word in ["사도", "들어갈", "몰빵", "지금", "급"])
-                
-                # 응답 결정
-                if has_loss or has_anxiety:
-                    st.session_state.counsel_result = "loss"
-                elif has_impulse:
-                    st.session_state.counsel_result = "impulse"
-                else:
-                    st.session_state.counsel_result = "safe"
-                
-                st.rerun()
+                with st.spinner("🤔 AI가 생각 중입니다... (2~3초)"):
+                    response = groq_counsel(user_input)
+                    
+                    st.markdown("---")
+                    st.markdown("### 🧭 AI 상담 결과")
+                    st.markdown(response)
+                    st.markdown("---")
             else:
                 st.warning("⚠️ 질문을 입력해주세요!")
-    
-    # 결과 표시
-    st.write("")
-    
-    if st.session_state.counsel_submitted and st.session_state.counsel_result:
-        result = st.session_state.counsel_result
-        
-        if result == "loss":
-            # 공감형 응답
-            st.markdown('<div class="defense-message"><h3>💙 당신의 감정을 이해합니다</h3></div>', unsafe_allow_html=True)
-            st.write("")
-            
-            st.info("""
-**힘들었겠네요. 정말로요.**
-
-**중요한 것은:**
-과거의 선택은 이미 지났습니다.
-지금부터 무엇을 할지가 중요해요.
-
-**다음 중 뭘 하고 싶으신가요?**
-1️⃣ 현재 상황을 정리하고 싶어요
-2️⃣ 손절할지 말지 판단이 필요해요
-3️⃣ 앞으로의 전략을 바꾸고 싶어요
-4️⃣ 그냥 쉬고 싶어요
-            """)
-            
-        elif result == "impulse":
-            st.markdown('<div class="warning-shake"><h3>⚠️ 신중할 시간입니다</h3></div>', unsafe_allow_html=True)
-            st.write("")
-            
-            st.warning("""
-**지금은 시장이 불안정합니다.**
-
-**확인해보세요:**
-✓ 이 돈을 잃어도 괜찮은가요?
-✓ 감정적 판단은 아닌가요?
-✓ 3년 이상 보유할 수 있나요?
-✓ 명확한 근거가 있나요?
-
-**이 질문 중 하나라도 "아니오"라면**
-👉 **지금은 움직일 때가 아닙니다.**
-            """)
-            
-        else:  # safe
-            st.markdown('<div class="success-float"><h3>✅ 안전한 질문입니다</h3></div>', unsafe_allow_html=True)
-            st.write("")
-            
-            st.success("""
-**기본 투자 원칙:**
-✓ 장기 관점 유지
-✓ 분산 투자 필수
-✓ 감정 배제
-✓ 잃어도 되는 금액만 투자
-✓ 명확한 기준 수립
-            """)
-    
-    # ============================================================================
-    # 종목 분석 섹션 (상담 결과와 상관없이 항상 표시)
-    # ============================================================================
-    
-    st.divider()
-    
-    st.markdown("### 📊 종목 분석")
-    
-    # 사용자가 종목을 언급했는지 확인
-    stocks_mentioned = {
-        "반도체": ["반도체", "SK하이닉스", "삼성전자", "하이닉스", "삼성", "DRAM", "낸드", "칩"],
-        "통신": ["통신", "SKT", "KT", "LG유플러스", "LGU+"],
-        "에너지": ["에너지", "석유", "원전", "태양광", "수소"],
-        "전기차": ["전기차", "현대차", "기아", "테슬라", "EV", "자동차", "차량", "모빌리티"],
-        "AI/기술": ["AI", "소프트웨어", "빅데이터", "클라우드", "NPU", "반도체", "기술주"]
-    }
-    
-    detected_sectors = []
-    for sector, keywords in stocks_mentioned.items():
-        if any(keyword in user_input for keyword in keywords):
-            detected_sectors.append(sector)
-    
-    if detected_sectors:
-        st.markdown(f"**🔍 감지된 분야:** {', '.join(detected_sectors)}")
-        
-        # 반도체 산업 분석
-        if "반도체" in detected_sectors:
-            st.markdown("""
-            <div class="success-float" style="margin-top: 15px;">
-            <h4>💡 반도체 산업 분석</h4>
-            
-            **📈 현재 시장 상황:**
-            ✓ 글로벌 AI 수요 급증
-            ✓ 반도체 부족 현상 지속
-            ✓ 장기 성장 산업
-            
-            **⚠️ 주의할 점:**
-            ⚠️ 높은 변동성 (급등락)
-            ⚠️ 경기 민감도 높음
-            ⚠️ 경쟁 심화
-            
-            **🎯 투자 결론:**
-            반도체는 **장기 성장 산업**이지만 **단기 변동성이 크다**
-            
-            **추천 접근 방식:**
-            1️⃣ 장기 투자자: 좋은 기회 (3년 이상)
-            2️⃣ 단기 투자자: 위험 (변동성 높음)
-            3️⃣ 보수 투자자: 소액 분산 투자 권장
-            
-            **투자 전 체크리스트:**
-            □ 총 자산의 10% 이내로 제한
-            □ 3년 이상 보유 계획
-            □ 손절가 미리 정하기 (-10~15%)
-            □ 정기적 분할 매수 (DCA)
-            
-            **주요 반도체 종목:**
-            • 삼성전자: 대형주 안정성 ⭐⭐⭐
-            • SK하이닉스: 가치주 성향 ⭐⭐
-            • 메모리 반도체: 수급 개선 중
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # 통신 산업 분석
-        if "통신" in detected_sectors:
-            st.markdown("""
-            <div class="warning-shake" style="margin-top: 15px;">
-            <h4>💡 통신 산업 분석</h4>
-            
-            **📈 현재 시장 상황:**
-            ✓ 배당금 높음
-            ✓ 상대적 안정성
-            ✓ 인프라 투자 지속
-            
-            **⚠️ 주의할 점:**
-            ⚠️ 성장성 제한적
-            ⚠️ 규제 리스크
-            ⚠️ 경쟁 심화
-            
-            **🎯 투자 결론:**
-            통신은 **안정적 배당주** 특징
-            
-            **추천 접근 방식:**
-            1️⃣ 배당 수익 목표: 매력적
-            2️⃣ 성장 투자: 제한적
-            3️⃣ 보유 기간: 중장기 (5년+)
-            
-            **주요 통신 종목:**
-            • SKT: 배당 + 안정성 ⭐⭐⭐
-            • KT: 5G 인프라 ⭐⭐
-            • LG유플러스: 가치주 ⭐⭐
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # 전기차 산업 분석
-        if "전기차" in detected_sectors:
-            st.markdown("""
-            <div class="success-float" style="margin-top: 15px;">
-            <h4>💡 전기차 산업 분석</h4>
-            
-            **📈 현재 시장 상황:**
-            ✓ 글로벌 EV 전환 추세
-            ✓ 정부 정책 지원 확대
-            ✓ 수익성 개선 추세
-            
-            **⚠️ 주의할 점:**
-            ⚠️ 높은 변동성
-            ⚠️ 기술 리스크
-            ⚠️ 경쟁 급속화
-            
-            **🎯 투자 결론:**
-            전기차는 **미래 성장 산업**이지만 **변동성 큼**
-            
-            **추천 접근 방식:**
-            1️⃣ 보수적: 현대차/기아 (국내 대형주)
-            2️⃣ 적극적: 테슬라 (성장성 높으나 리스크 높음)
-            3️⃣ 분산: 2~3개 종목으로 리스크 분산
-            
-            **투자 기간:**
-            • 최소 3년 이상 (변동성 흡수)
-            • 장기 보유시 수익 가능성 높음
-            
-            **주요 전기차 종목:**
-            • 현대차: 대형주 안정성 ⭐⭐⭐
-            • 기아: 성장성 ⭐⭐⭐
-            • 테슬라(미국): 고성장 고변동성 ⭐⭐
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # AI/기술 산업 분석
-        if "AI/기술" in detected_sectors:
-            st.markdown("""
-            <div class="success-float" style="margin-top: 15px;">
-            <h4>💡 AI/기술 산업 분석</h4>
-            
-            **📈 현재 시장 상황:**
-            ✓ AI 시대 본격화
-            ✓ 수요 급증
-            ✓ 성장성 높음
-            
-            **⚠️ 주의할 점:**
-            ⚠️ 매우 높은 변동성
-            ⚠️ 과열 우려
-            ⚠️ 기술 변화 빠름
-            
-            **🎯 투자 결론:**
-            AI/기술은 **최고 성장성**이지만 **최고 위험**
-            
-            **추천 접근 방식:**
-            1️⃣ 공격적: 전액 투자 (경험 많은 투자자)
-            2️⃣ 균형: 소액 비중으로 분산 투자
-            3️⃣ 보수적: 피하기 (리스크 싫어하면)
-            
-            **투자 기간:**
-            • 최소 5년 (매우 변동성 큼)
-            • 손절가 필수 설정
-            
-            **추천 종목:**
-            • 반도체: 인프라 역할 ⭐⭐⭐
-            • 소프트웨어: 고성장 ⭐⭐⭐
-            • 클라우드: 미래 필수 ⭐⭐⭐
-            </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("""
-        💡 **팁:** 구체적인 종목명을 말씀해주시면,
-        더 자세한 분석을 해드릴 수 있습니다!
-        
-        예: "반도체 종목", "SKT", "현대차 전기차" 등
-        """)
-    
-    # 초기화 버튼 (종목 분석 아래)
-    st.write("")
-    if st.button("🔄 새로운 상담하기", use_container_width=True):
-        st.session_state.counsel_submitted = False
-        st.session_state.counsel_result = None
-        st.session_state.last_input = ""
-        st.rerun()
 
 # ============================================================================
 # TAB 2: 뉴스
@@ -598,32 +392,37 @@ with tab4:
 with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
-    st.markdown("#### 🎨 애니메이션 효과")
+    st.markdown("#### ⚡ Groq API 상담 정보")
     
-    st.markdown('<div class="success-float"><strong>✨ 깜빡임 애니메이션</strong><br>헤더와 모든 박스의 부드러운 깜빡임 (2~3초 주기)</div>', unsafe_allow_html=True)
-    st.markdown('<div class="counsel-icon-animated" style="font-size: 1.5em;"><strong>💬 상담 아이콘</strong></div>', unsafe_allow_html=True)
-    st.markdown('<div style="padding: 10px; text-align: center; color: #666;">위아래 부드러운 움직임 + 깜빡임</div>', unsafe_allow_html=True)
+    st.info("""
+    **GINI Guardian v2.1 - Groq API 버전**
     
-    st.markdown('<div class="danger-pulse"><strong>🔴 위험 신호</strong><br>위험 수준을 나타내는 깜빡이는 박스</div>', unsafe_allow_html=True)
-    st.markdown('<div class="warning-shake"><strong>⚠️ 경고 메시지</strong><br>주의가 필요한 정보 표시</div>', unsafe_allow_html=True)
-    st.markdown('<div class="success-float"><strong>✅ 안전 메시지</strong><br>안전한 정보 표시</div>', unsafe_allow_html=True)
+    ✅ 무료 (월 한계 넉넉함)
+    ✅ 초빠름 (2~3초)
+    ✅ 강력 (Llama 3.1 8B)
+    ✅ 설치 불필요
     
-    st.divider()
+    **사용 중인 모델:**
+    • Llama 3.1 8B Instant
+    
+    **장점:**
+    • API KEY만 있으면 됨
+    • 클라우드 기반 (설치 X)
+    • 초빠른 응답
+    • 무료 (충분한 한계)
+    """)
     
     st.markdown("#### 📋 버전 정보")
     st.info("""
-    **GINI Guardian v2.1 - 최종 완벽 버전**
+    **GINI Guardian v2.1 - Groq Edition**
     
-    ✅ 상담 아이콘 위아래 부드러운 움직임
-    ✅ 매우 진한 파란색 헤더 (#052d7a)
-    ✅ 상담 버튼 반응 완벽 수정
-    ✅ 포트폴리오 종목 추가 기능
-    ✅ 깜빡임 애니메이션 (움직임 최소화)
-    ✅ 공감형 상담 시스템
+    ⚡ 무료 + 초빠른 AI 상담
+    🚀 Llama 3.1 8B 기반
+    💙 자연어 처리 (GPT 수준)
     
     라이라 설계 × 미라클 구현 🔥
     """)
 
 # 푸터
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v2.1 - 최종 완벽 버전** | ✨ 상담 아이콘 움직임 + 진한 파란색 | 💙 라이라 설계 × 미라클 구현")
+st.markdown("---\n🛡️ **GINI Guardian v2.1 (Groq)** | ⚡ 무료 + 초빠른 AI 상담 | 💙 라이라 설계 × 미라클 구현")
