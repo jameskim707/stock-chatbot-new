@@ -8,6 +8,15 @@ from datetime import datetime
 import plotly.graph_objects as go
 import time
 
+# 자동방어 모듈 import
+import sys
+sys.path.append('/home/claude')
+from defense_module import (
+    analyze_user_input,
+    should_trigger_defense_module,
+    generate_safe_response
+)
+
 # 페이지 설정
 st.set_page_config(
     page_title="GINI Guardian",
@@ -510,86 +519,71 @@ with tab2:
     
     if st.button("🚀 보내기", type="primary", use_container_width=True):
         if user_input:
-            # 위험 키워드 감지
-            위험_감지 = False
-            감지된_키워드 = None
+            # 자동방어 모듈 활성화
+            is_risky, risk_type = analyze_user_input(user_input)
             
-            for 키워드 in 경고_메시지.keys():
-                if 키워드 in user_input:
-                    위험_감지 = True
-                    감지된_키워드 = 키워드
-                    break
+            if should_trigger_defense_module(user_input):
+                # 위험 감지 - 자동방어 모듈 발동
+                st.markdown(f'<div class="warning-pulse">🚨 <b>위험 질문 감지됨: {risk_type}</b></div>', unsafe_allow_html=True)
+                
+                with st.spinner('🛡️ 안전 응답 생성 중...'):
+                    time.sleep(0.5)
+                
+                st.write("### 🔸 GINI Guardian 응답:")
+                safe_response = generate_safe_response(user_input)
+                st.info(safe_response)
             
-            # 위험 감지 시 랜덤 경고 표시
-            if 위험_감지:
-                경고 = random.choice(경고_메시지[감지된_키워드])
-                st.markdown(f'<div class="warning-pulse">🚨 <b>{경고}</b></div>', unsafe_allow_html=True)
-                st.error("⚠️ 잠깐! 한 번 더 생각해보세요.")
-            
-            # AI 응답
-            with st.spinner('🤖 AI가 생각하는 중...'):
-                try:
-                    # 시장 데이터를 컨텍스트로 제공
-                    market_context = ""
-                    if market_data:
-                        if not market_data["kospi"].empty:
-                            kospi_close = market_data["kospi"]["Close"].iloc[-1]
-                            market_context += f"현재 코스피: {kospi_close:,.2f}\n"
+            else:
+                # 일반 질문 - Groq AI에게 넘김
+                with st.spinner('🤖 AI가 생각하는 중...'):
+                    try:
+                        # 시장 데이터를 컨텍스트로 제공
+                        market_context = ""
+                        if market_data:
+                            if not market_data["kospi"].empty:
+                                kospi_close = market_data["kospi"]["Close"].iloc[-1]
+                                market_context += f"현재 코스피: {kospi_close:,.2f}\n"
+                            
+                            # 랜덤 종목 정보도 추가
+                            stock_info = "\n추천 종목:\n"
+                            for ticker, info in market_data["stocks"].items():
+                                if not info["data"].empty:
+                                    price = info["data"]["Close"].iloc[-1]
+                                    stock_info += f"- {info['name']}: {price:,.0f}원\n"
+                            market_context += stock_info
                         
-                        # 랜덤 종목 정보도 추가
-                        stock_info = "\n추천 종목:\n"
-                        for ticker, info in market_data["stocks"].items():
-                            if not info["data"].empty:
-                                price = info["data"]["Close"].iloc[-1]
-                                stock_info += f"- {info['name']}: {price:,.0f}원\n"
-                        market_context += stock_info
-                    
-                    response = client.chat.completions.create(
-                        model="llama-3.1-8b-instant",
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": (
-                                    "당신은 GINI Guardian입니다. "
-                                    "사용자의 투자 고민을 친절하게 듣고, 객관적인 정보와 분석을 제공하는 상담 챗봇입니다. "
-                                    "하지만 최종 투자 결정은 절대 대신 내려드릴 수 없으며, 손실 발생 시 책임을 질 수 없음을 명확히 해야 합니다. "
-                                    "\n"
-                                    "【 상담 패턴 】\n"
-                                    "1. 사용자의 관심사에 공감하기 (예: '카카오뱅크 관심 가지신군요')\n"
-                                    "2. 해당 종목/투자의 긍정적 정보 제시\n"
-                                    "3. 객관적인 리스크 요소 설명\n"
-                                    "4. 시장 변동성과 불확실성 언급\n"
-                                    "5. '이러한 위험을 감수할 준비가 되셨나요?'라고 질문 되돌리기\n"
-                                    "6. '최종 결정은 당신의 몫입니다'로 권한 부여\n"
-                                    "7. '다만 손실 발생 시 책임은 저에게 묻지 마세요'로 책임 명확화\n"
-                                    "\n"
-                                    "【 톤 가이드 】\n"
-                                    "- 항상 존댓말 사용\n"
-                                    "- 공감과 이해 표현\n"
-                                    "- 정보는 최대한 친절하게\n"
-                                    "- 책임은 절대 타협하지 않기\n"
-                                    "- 건설적이고 균형잡힌 조언\n"
-                                    "\n"
-                                    "【 금지 사항 】\n"
-                                    "- 투자 추천 금지\n"
-                                    "- 손실을 보장하지 않기\n"
-                                    "- 마치 전문가인 척 하기\n"
-                                    "- 책임 암시하기\n"
-                                    "- 일반적이고 무의미한 경고만 반복하기\n"
-                                    "\n"
-                                    f"현재 시장 상황:\n{market_context}"
-                                )
-                            },
-                            {"role": "user", "content": user_input}
-                        ],
-                        stream=False
-                    )
-                    
-                    st.write("### 🔸 GINI Guardian 응답:")
-                    st.info(response.choices[0].message.content)
-                    
-                except Exception as e:
-                    st.error(f"❌ API 호출 오류: {e}")
+                        response = client.chat.completions.create(
+                            model="llama-3.1-8b-instant",
+                            messages=[
+                                {
+                                    "role": "system",
+                                    "content": (
+                                        "당신은 GINI Guardian입니다. "
+                                        "사용자의 투자 고민을 친절하게 듣고, 객관적인 정보와 분석을 제공하는 상담 챗봇입니다. "
+                                        "하지만 최종 투자 결정은 절대 대신 내려드릴 수 없으며, 손실 발생 시 책임을 질 수 없음을 명확히 해야 합니다. "
+                                        "\n"
+                                        "【 상담 패턴 】\n"
+                                        "1. 사용자의 관심사에 공감하기\n"
+                                        "2. 해당 종목/투자의 긍정적 정보 제시\n"
+                                        "3. 객관적인 리스크 요소 설명\n"
+                                        "4. 시장 변동성과 불확실성 언급\n"
+                                        "5. '이러한 위험을 감수할 준비가 되셨나요?'라고 질문 되돌리기\n"
+                                        "6. '최종 결정은 당신의 몫입니다'로 권한 부여\n"
+                                        "7. '손실 발생 시 책임은 저에게 묻지 마세요'로 책임 명확화\n"
+                                        "\n"
+                                        f"현재 시장 상황:\n{market_context}"
+                                    )
+                                },
+                                {"role": "user", "content": user_input}
+                            ],
+                            stream=False
+                        )
+                        
+                        st.write("### 🔸 GINI Guardian 응답:")
+                        st.info(response.choices[0].message.content)
+                        
+                    except Exception as e:
+                        st.error(f"❌ API 호출 오류: {e}")
         else:
             st.warning("💬 메시지를 입력해주세요.")
 
