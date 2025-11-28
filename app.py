@@ -111,18 +111,38 @@ def generate_safe_response(user_input: str, market_context: str = "") -> str:
     """위험 질문이 감지되면 안전한 답변을 자동 생성"""
     response_parts = []
     
-    response_parts.append(f"🛡️ {get_responsibility_clause()}")
-    response_parts.append("")
-    response_parts.append(get_psychological_stability())
-    response_parts.append("")
-    response_parts.append(get_risk_awareness())
-    response_parts.append("")
-    response_parts.append(get_self_decision_induction())
+    # 1. 공감과 인정
+    response_parts.append("당신의 투자 고민을 이해합니다. 많은 투자자들이 같은 고민을 합니다.")
     response_parts.append("")
     
-    if market_context:
-        response_parts.append(get_market_data_reference())
-        response_parts.append(f"📊 시장 상황: {market_context}")
+    # 2. 책임 명확화 (따뜻하게)
+    response_parts.append(f"🛡️ {get_responsibility_clause()}")
+    response_parts.append("")
+    
+    # 3. 심리 안정
+    response_parts.append("💭 " + get_psychological_stability())
+    response_parts.append("")
+    
+    # 4. 위험 인지 (구체적으로)
+    response_parts.append("⚠️ " + get_risk_awareness())
+    response_parts.append("")
+    
+    # 5. 실제 체크리스트
+    response_parts.append("【 투자하기 전에 확인하세요 】")
+    response_parts.append("✓ 잃어도 괜찮은 금액인가요?")
+    response_parts.append("✓ 3년 이상 보유할 계획인가요?")
+    response_parts.append("✓ 충동적인 결정은 아닌가요?")
+    response_parts.append("✓ 전문가 의견이 아닌 당신의 판단인가요?")
+    response_parts.append("")
+    
+    # 6. 자기결정 유도
+    response_parts.append("이 질문들에 모두 '예'라고 답할 수 있다면, 당신은 충분히 준비된 것입니다.")
+    response_parts.append("하나라도 '아니오'라면, 더 신중하게 생각해 보세요.")
+    response_parts.append("")
+    
+    # 7. 희망 메시지
+    response_parts.append("💪 당신의 투자 여정을 응원합니다.")
+    response_parts.append("신중한 결정이 최고의 수익입니다.")
     
     return "\n".join(response_parts)
 
@@ -649,23 +669,39 @@ with tab1:
 with tab2:
     st.markdown('<h2><span class="icon-bounce">💬</span> AI 투자 상담</h2>', unsafe_allow_html=True)
     
-    user_input = st.text_input("메시지를 입력하세요:", key="chat_input", placeholder="예: 삼성전자 지금 사도 될까요?")
+    # 상담 상태 초기화
+    if 'chat_history' not in st.session_state:
+        st.session_state.chat_history = []
     
-    if st.button("🚀 보내기", type="primary", use_container_width=True):
-        if user_input:
+    # 상담 입력 영역
+    col_input, col_button = st.columns([4, 1])
+    
+    with col_input:
+        user_input = st.text_input("메시지를 입력하세요:", key="chat_input", placeholder="예: 삼성전자 지금 사도 될까요?")
+    
+    with col_button:
+        send_button = st.button("🚀 보내기", type="primary", use_container_width=True)
+    
+    if send_button and user_input:
+        try:
             # 자동방어 모듈 활성화
             is_risky, risk_type = analyze_user_input(user_input)
             
             if should_trigger_defense_module(user_input):
                 # 위험 감지 - 자동방어 모듈 발동
-                st.markdown(f'<div class="warning-pulse">🚨 <b>위험 질문 감지됨: {risk_type}</b></div>', unsafe_allow_html=True)
+                st.warning(f"🚨 위험 질문 감지됨: {risk_type}")
+                st.info("🛡️ 자동방어 모듈이 활성화되었습니다.")
                 
-                with st.spinner('🛡️ 안전 응답 생성 중...'):
-                    time.sleep(0.5)
-                
-                st.write("### 🔸 GINI Guardian 응답:")
                 safe_response = generate_safe_response(user_input)
+                st.write("### 🔸 GINI Guardian 응답:")
                 st.info(safe_response)
+                
+                # 대화 기록 저장
+                st.session_state.chat_history.append({
+                    "user": user_input,
+                    "bot": safe_response,
+                    "type": "defense"
+                })
             
             else:
                 # 일반 질문 - Groq AI에게 넘김
@@ -713,13 +749,34 @@ with tab2:
                             stream=False
                         )
                         
+                        bot_response = response.choices[0].message.content
                         st.write("### 🔸 GINI Guardian 응답:")
-                        st.info(response.choices[0].message.content)
+                        st.info(bot_response)
+                        
+                        # 대화 기록 저장
+                        st.session_state.chat_history.append({
+                            "user": user_input,
+                            "bot": bot_response,
+                            "type": "general"
+                        })
                         
                     except Exception as e:
-                        st.error(f"❌ API 호출 오류: {e}")
-        else:
-            st.warning("💬 메시지를 입력해주세요.")
+                        st.error(f"❌ API 호출 오류: {str(e)}")
+        
+        except Exception as e:
+            st.error(f"❌ 처리 중 오류 발생: {str(e)}")
+    
+    elif send_button:
+        st.warning("💬 메시지를 입력해주세요.")
+    
+    # 대화 기록 표시
+    st.divider()
+    if st.session_state.chat_history:
+        st.write("### 📋 대화 기록")
+        for i, chat in enumerate(st.session_state.chat_history):
+            st.write(f"**👤 당신:** {chat['user']}")
+            st.write(f"**🤖 Guardian:** {chat['bot']}")
+            st.divider()
 
 # 탭3: 내 포트폴리오
 with tab3:
