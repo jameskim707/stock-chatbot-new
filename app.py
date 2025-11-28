@@ -137,17 +137,20 @@ def groq_counsel(user_text):
         prompt = f"""당신은 전문 투자 심리 상담 AI입니다.
 사용자의 감정, 투자 수준을 자연스럽게 추론하여 상담해주세요.
 
-📋 응답 형식:
-[감정점수: X] (0-10, 숫자만)
+⭐ 매우 중요: 응답 맨 앞에 반드시 [감정점수: X] 형식으로 시작하세요! (X는 0~10 숫자)
+
+예시:
+[감정점수: 7.5]
+
 [분석]
-- 감정 상태
-- 추정 투자 수준
+- 감정 상태: ...
+- 추정 투자 수준: ...
 
 [상담]
-- 공감
-- 객관적 분석
-- 조언
-- 다음 단계 선택지 (2~3개)
+- 공감: ...
+- 객관적 분석: ...
+- 조언: ...
+- 다음 단계: ...
 
 사용자 입력: {user_text}"""
 
@@ -162,9 +165,23 @@ def groq_counsel(user_text):
         
         response = chat_completion.choices[0].message.content
         
-        # 감정 점수 추출
-        emotion_match = re.search(r'\[감정점수:\s*(\d+(?:\.\d+)?)\]', response)
-        emotion_score = float(emotion_match.group(1)) if emotion_match else 5.0
+        # 감정 점수 추출 (더 강력한 정규식)
+        patterns = [
+            r'\[감정점수:\s*(\d+\.?\d*)\]',
+            r'감정점수:\s*(\d+\.?\d*)',
+            r'감정\s*점수:\s*(\d+\.?\d*)',
+        ]
+        
+        emotion_score = 5.0  # 기본값
+        
+        for pattern in patterns:
+            emotion_match = re.search(pattern, response)
+            if emotion_match:
+                try:
+                    emotion_score = float(emotion_match.group(1))
+                    break
+                except:
+                    continue
         
         # 점수가 0-10 범위 밖이면 조정
         emotion_score = max(0, min(10, emotion_score))
