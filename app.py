@@ -193,6 +193,18 @@ with tab1:
     
     # 입력 폼
     st.markdown("**당신의 투자 고민을 말씀해주세요:**")
+    
+    # 상담란 테두리 스타일
+    st.markdown("""
+    <style>
+        .counsel-textarea {
+            border: 1px solid #0a47a0 !important;
+            border-radius: 8px !important;
+            padding: 12px !important;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
     user_input = st.text_area(
         "예) 물타기 후 10% 잃었어...",
         height=100,
@@ -290,6 +302,110 @@ with tab1:
             st.session_state.counsel_submitted = False
             st.session_state.counsel_result = None
             st.rerun()
+    
+    # ============================================================================
+    # 종목 분석 섹션
+    # ============================================================================
+    
+    st.divider()
+    
+    st.markdown("### 📊 종목 분석")
+    
+    # 사용자가 종목을 언급했는지 확인
+    stocks_mentioned = {
+        "반도체": ["반도체", "SK하이닉스", "삼성전자", "DRAM", "낸드"],
+        "통신": ["통신", "SKT", "KT", "LG유플러스"],
+        "에너지": ["에너지", "석유", "원전", "태양광"],
+        "전기차": ["전기차", "현대차", "기아", "EV"],
+        "AI/기술": ["AI", "소프트웨어", "빅데이터", "클라우드", "NPU"]
+    }
+    
+    detected_sectors = []
+    for sector, keywords in stocks_mentioned.items():
+        if any(keyword in user_input for keyword in keywords):
+            detected_sectors.append(sector)
+    
+    if detected_sectors:
+        st.markdown(f"**🔍 감지된 분야:** {', '.join(detected_sectors)}")
+        
+        # 반도체 분석
+        if "반도체" in detected_sectors:
+            st.markdown("""
+            <div class="success-float" style="margin-top: 15px;">
+            <h4>💡 반도체 투자 분석</h4>
+            
+            **긍정 요소:**
+            ✓ 글로벌 AI 수요 증가
+            ✓ 반도체 부족 현상 지속
+            ✓ 장기 성장 산업
+            
+            **부정 요소:**
+            ⚠️ 높은 변동성
+            ⚠️ 경기 민감도 높음
+            ⚠️ 경쟁 심화
+            
+            **추천 접근:**
+            1️⃣ 삼성전자: 대형주 안정성 (초보자 적합)
+            2️⃣ SK하이닉스: 가치주 성향
+            3️⃣ 분산 투자: 2~3개 종목으로 리스크 분산
+            4️⃣ 장기 보유: 최소 3년 이상
+            
+            **체크리스트:**
+            □ 총 자산의 10% 이내 투자
+            □ 손절가 미리 정해두기 (-10~15%)
+            □ 익절가 정해두기 (+20~30%)
+            □ 정기적 분할 매수 (DCA)
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 통신 분석
+        if "통신" in detected_sectors:
+            st.markdown("""
+            <div class="warning-shake" style="margin-top: 15px;">
+            <h4>💡 통신 산업 분석</h4>
+            
+            **특징:**
+            ✓ 배당금 높음 (배당주 매력)
+            ✓ 상대적 안정성
+            ⚠️ 성장성 제한적
+            
+            **주요 종목:**
+            • SKT: 인프라 + 배당
+            • KT: 5G 인프라
+            • LG유플러스: 가치주
+            
+            **투자 전략:**
+            중장기 배당 수익 목표
+            </div>
+            """, unsafe_allow_html=True)
+        
+        # 전기차 분석
+        if "전기차" in detected_sectors:
+            st.markdown("""
+            <div class="success-float" style="margin-top: 15px;">
+            <h4>💡 전기차 산업 분석</h4>
+            
+            **성장 가능성:**
+            ✓ 글로벌 EV 전환 추세
+            ✓ 정부 정책 지원
+            ✓ 수익성 개선 추세
+            
+            **리스크:**
+            ⚠️ 높은 변동성
+            ⚠️ 기술 리스크
+            ⚠️ 경쟁 심화
+            
+            **추천 접근:**
+            현대차/기아: 기존 자동차 대비 낮은 리스크
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("""
+        💡 **팁:** 구체적인 종목명을 말씀해주시면,
+        더 자세한 분석을 해드릴 수 있습니다!
+        
+        예: "반도체 종목", "SKT", "현대차 전기차" 등
+        """)
 
 # ============================================================================
 # TAB 2: 뉴스
