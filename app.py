@@ -279,20 +279,24 @@ with tab1:
                     # 결과 표시
                     st.markdown("---")
                     
-                    # 위험지표 (강조)
-                    st.markdown(f"""
-                    ### 📊 오늘의 위험지표
+                    # 위험지표 (매우 명확하게)
+                    col_risk1, col_risk2 = st.columns(2)
                     
-                    # **{risk} / 10**
+                    with col_risk1:
+                        st.metric(
+                            label="📊 오늘의 위험지표",
+                            value=f"{risk} / 10",
+                            delta=None
+                        )
                     
-                    **{risk_emoji}**
-                    """)
+                    with col_risk2:
+                        st.info(f"**{risk_emoji}**")
                     
                     st.divider()
                     
                     # AI 상담
                     st.markdown("### 🧭 AI 상담 결과")
-                    st.markdown(response)
+                    st.write(response)
                     
                     st.markdown("---")
             else:
