@@ -1,6 +1,6 @@
 """
-🛡️ GINI Guardian v2.1 — Groq API 상담 버전
-✨ Groq API (무료 + 초빠름)
+🛡️ GINI Guardian v2.1 — Groq API 상담 버전 (수정)
+✨ Groq API (무료 + 초빠름) - 최신 라이브러리 대응
 ✨ Llama 3.1 8B 기반 AI 상담
 ✨ 자연어 처리 (GPT 수준)
 
@@ -131,16 +131,20 @@ st.set_page_config(page_title="GINI Guardian v2.1 (Groq)", page_icon="🛡️", 
 st.markdown(ANIMATION_CSS, unsafe_allow_html=True)
 
 # ============================================================================
-# 🤖 Groq 상담 함수
+# 🤖 Groq 상담 함수 (최신 버전 대응)
 # ============================================================================
 
 def groq_counsel(user_text):
     """
     Groq API를 통한 AI 상담
     무료 + 초빠름 + 강력함
+    최신 Groq 라이브러리 대응 (chat.completions)
     """
     try:
-        client = Groq(api_key="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")
+        import os
+        api_key = os.getenv("GROQ_API_KEY") or "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"
+        
+        client = Groq(api_key=api_key)
         
         # 상담 프롬프트
         prompt = f"""당신은 전문 투자 심리 상담 AI입니다.
@@ -159,19 +163,39 @@ def groq_counsel(user_text):
 
 사용자 입력: {user_text}"""
 
-        # Groq API 호출 (초빠름!)
-        message = client.messages.create(
-            model="llama-3.1-8b-instant",
-            max_tokens=1024,
+        # ✅ 최신 Groq API 방식 (chat.completions)
+        chat_completion = client.chat.completions.create(
             messages=[
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            model="llama-3.1-8b-instant",
+            max_tokens=1024,
+            temperature=0.7
         )
         
-        return message.content[0].text
+        return chat_completion.choices[0].message.content
+    
+    except AttributeError as e:
+        return f"""❌ Groq 라이브러리 버전 문제!
+
+**해결 방법:**
+```bash
+pip install --upgrade groq
+```
+
+최신 버전을 설치하고 다시 실행해주세요!
+
+에러: {str(e)}"""
     
     except Exception as e:
-        return f"❌ 오류 발생: {str(e)}\n\nAPI KEY를 확인해주세요."
+        return f"""❌ 오류 발생: {str(e)}
+
+**확인사항:**
+1. API KEY 확인
+2. 인터넷 연결 확인
+3. Groq 라이브러리 업그레이드: pip install --upgrade groq
+
+에러 타입: {type(e).__name__}"""
 
 # ============================================================================
 # 헤더
@@ -236,17 +260,6 @@ with tab1:
     
     # 입력 폼
     st.markdown("**당신의 투자 고민을 말씀해주세요:**")
-    
-    # 상담란 테두리 스타일
-    st.markdown("""
-    <style>
-        .counsel-textarea {
-            border: 1px solid #0a47a0 !important;
-            border-radius: 8px !important;
-            padding: 12px !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
     
     user_input = st.text_area(
         "예) 반도체 투자하려고 하는데 어때?",
@@ -414,11 +427,12 @@ with tab5:
     
     st.markdown("#### 📋 버전 정보")
     st.info("""
-    **GINI Guardian v2.1 - Groq Edition**
+    **GINI Guardian v2.1 - Groq Edition (Fixed)**
     
     ⚡ 무료 + 초빠른 AI 상담
     🚀 Llama 3.1 8B 기반
     💙 자연어 처리 (GPT 수준)
+    ✅ 최신 Groq 라이브러리 대응
     
     라이라 설계 × 미라클 구현 🔥
     """)
