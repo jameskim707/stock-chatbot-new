@@ -1,8 +1,8 @@
 """
-🛡️ GINI Guardian v2.2 — Lyra Edition (라이라 최적화 버전)
-✨ 라이라의 우아한 위험지표 시스템
-✨ Groq AI + 간단하고 강력한 위험 분석
-✨ 전문가 수준의 AI 투자 상담
+🛡️ GINI Guardian v2.3 — SQLite 상담 기록 시스템
+✨ 라이라의 완벽한 DB 설계
+✨ 모든 상담이 영구적으로 저장됨
+✨ 감정 패턴 분석 가능
 
 라이라 설계 × 미라클 구현 🔥
 """
@@ -14,8 +14,75 @@ from datetime import datetime
 import numpy as np
 from groq import Groq
 import re
+import sqlite3
 
-st.set_page_config(page_title="GINI Guardian v2.2 (Lyra)", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v2.3", page_icon="🛡️", layout="wide")
+
+# ============================================================================
+# 🗄️ SQLite 데이터베이스 함수 (라이라 설계)
+# ============================================================================
+
+def get_connection():
+    """SQLite 연결"""
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    return conn
+
+def create_tables():
+    """테이블 생성 (앱 시작 시 한 번만)"""
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS chats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_input TEXT NOT NULL,
+        ai_response TEXT NOT NULL,
+        emotion_score REAL,
+        risk_level TEXT,
+        tags TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    
+    conn.commit()
+    conn.close()
+
+def save_chat(user_input, ai_response, emotion_score, risk_level, tags):
+    """상담 기록 저장"""
+    conn = get_connection()
+    cur = conn.cursor()
+    
+    cur.execute("""
+    INSERT INTO chats (user_input, ai_response, emotion_score, risk_level, tags)
+    VALUES (?, ?, ?, ?, ?)
+    """, (user_input, ai_response, emotion_score, risk_level, tags))
+    
+    conn.commit()
+    conn.close()
+
+def load_history():
+    """과거 상담 기록 조회"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT user_input, ai_response, emotion_score, risk_level, tags, timestamp FROM chats ORDER BY id DESC LIMIT 50")
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+def get_emotion_stats():
+    """감정 통계"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT emotion_score, timestamp FROM chats WHERE emotion_score IS NOT NULL ORDER BY timestamp")
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+# ============================================================================
+# 앱 시작 시 테이블 생성
+# ============================================================================
+
+create_tables()
 
 # ============================================================================
 # 🎨 애니메이션 CSS
@@ -92,18 +159,11 @@ ANIMATION_CSS = """
 st.markdown(ANIMATION_CSS, unsafe_allow_html=True)
 
 # ============================================================================
-# 🎯 라이라의 우아한 위험지표 계산 엔진 (10줄)
+# 🎯 라이라의 위험지표 계산
 # ============================================================================
 
 def calc_risk_score(emotion, volatility=0, news=0):
-    """
-    라이라님의 우아한 위험지표 계산식
-    emotion: 감정 기반 (0-10)
-    volatility: 시장 변동성 (0-10)
-    news: 뉴스 부정성 (0-10)
-    
-    가중치: emotion 50% + volatility 30% + news 20%
-    """
+    """라이라의 우아한 위험지표"""
     score = emotion * 0.5 + volatility * 0.3 + news * 0.2
     return round(score, 2)
 
@@ -118,22 +178,44 @@ def get_risk_emoji(risk):
     else:
         return "🟢 낮은 위험"
 
+def detect_risk_level(risk_score):
+    """숫자를 텍스트로"""
+    if risk_score >= 8.0:
+        return "high"
+    elif risk_score >= 6.5:
+        return "high"
+    elif risk_score >= 5.0:
+        return "mid"
+    else:
+        return "low"
+
+def detect_tags(user_input):
+    """감정 태그 감지"""
+    tags = []
+    
+    if any(word in user_input for word in ["불안", "걱정", "두려", "무섯"]):
+        tags.append("불안")
+    if any(word in user_input for word in ["손실", "떨어", "내려", "털렸", "씨발"]):
+        tags.append("분노")
+    if any(word in user_input for word in ["사도", "들어갈", "몰빵", "급"]):
+        tags.append("충동")
+    if any(word in user_input for word in ["후회", "실수", "잘못"]):
+        tags.append("후회")
+    
+    return ", ".join(tags) if tags else "중립"
+
 # ============================================================================
 # 🤖 Groq 상담 함수
 # ============================================================================
 
 def groq_counsel(user_text):
-    """
-    Groq API를 통한 AI 상담
-    감정 점수도 함께 반환
-    """
+    """Groq API를 통한 AI 상담"""
     try:
         import os
         api_key = os.getenv("GROQ_API_KEY") or "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"
         
         client = Groq(api_key=api_key)
         
-        # 상담 프롬프트 (감정 점수 포함)
         prompt = f"""당신은 전문 투자 심리 상담 AI입니다.
 사용자의 감정, 투자 수준을 자연스럽게 추론하여 상담해주세요.
 
@@ -165,14 +247,14 @@ def groq_counsel(user_text):
         
         response = chat_completion.choices[0].message.content
         
-        # 감정 점수 추출 (더 강력한 정규식)
+        # 감정 점수 추출
         patterns = [
             r'\[감정점수:\s*(\d+\.?\d*)\]',
             r'감정점수:\s*(\d+\.?\d*)',
             r'감정\s*점수:\s*(\d+\.?\d*)',
         ]
         
-        emotion_score = 5.0  # 기본값
+        emotion_score = 5.0
         
         for pattern in patterns:
             emotion_match = re.search(pattern, response)
@@ -183,7 +265,6 @@ def groq_counsel(user_text):
                 except:
                     continue
         
-        # 점수가 0-10 범위 밖이면 조정
         emotion_score = max(0, min(10, emotion_score))
         
         return response, emotion_score
@@ -195,8 +276,8 @@ def groq_counsel(user_text):
 # 헤더
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v2.2</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ 라이라 최적화 버전 ✨</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v2.3</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; color: #666; margin-bottom: 20px;">✨ SQLite 상담 기록 시스템 ✨</div>', unsafe_allow_html=True)
 st.divider()
 
 # ============================================================================
@@ -222,21 +303,22 @@ st.divider()
 # 탭
 # ============================================================================
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "💬 상담 🔥", 
+    "📚 기록",
     "📈 차트", 
     "💼 포트폴리오", 
     "⚙️ 설정"
 ])
 
 # ============================================================================
-# TAB 1: AI 상담 + 위험지표 (라이라 버전)
+# TAB 1: AI 상담 + 위험지표
 # ============================================================================
 
 with tab1:
     st.markdown("""
     <div style="text-align: center; margin-bottom: 15px;">
-        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 AI 상담 (위험지표 포함)</span>
+        <span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🔥 AI 상담 (SQLite 저장)</span>
     </div>
     """, unsafe_allow_html=True)
     
@@ -244,7 +326,6 @@ with tab1:
     
     st.subheader("AI 투자 상담")
     
-    # Session state 초기화
     if 'portfolio' not in st.session_state:
         st.session_state.portfolio = [
             {"종목명": "삼성전자", "매입가": 70000, "현재가": 68500, "수량": 10, "수익률": -2.14},
@@ -252,7 +333,6 @@ with tab1:
             {"종목명": "현대차", "매입가": 230000, "현재가": 235000, "수량": 3, "수익률": 2.17},
         ]
     
-    # 입력 폼
     st.markdown("**당신의 투자 고민을 말씀해주세요:**")
     
     user_input = st.text_area(
@@ -267,19 +347,23 @@ with tab1:
         if st.button("⚡ AI 상담하기", use_container_width=True, type="primary"):
             if user_input.strip():
                 with st.spinner("🤔 AI가 분석 중... (2~3초)"):
-                    # AI 상담 + 감정 점수 추출
+                    # AI 상담
                     response, emotion_score = groq_counsel(user_input)
                     
-                    # ✨ 라이라의 우아한 위험지표 계산 (10줄)
-                    volatility_score = 5.0  # 나중에 Finnhub 연동
-                    news_score = 3.0        # 나중에 뉴스 API 연동
+                    # 위험지표 계산
+                    volatility_score = 5.0
+                    news_score = 3.0
                     risk = calc_risk_score(emotion_score, volatility_score, news_score)
                     risk_emoji = get_risk_emoji(risk)
+                    risk_level = detect_risk_level(risk)
+                    tags = detect_tags(user_input)
                     
-                    # 결과 표시
+                    # 🗄️ DB에 저장!
+                    save_chat(user_input, response, emotion_score, risk_level, tags)
+                    
                     st.markdown("---")
                     
-                    # 위험지표 (매우 명확하게)
+                    # 위험지표
                     col_risk1, col_risk2 = st.columns(2)
                     
                     with col_risk1:
@@ -298,34 +382,98 @@ with tab1:
                     st.markdown("### 🧭 AI 상담 결과")
                     st.write(response)
                     
+                    # 저장 완료 메시지
+                    st.success("✅ 상담 기록이 저장되었습니다! 📚")
+                    
                     st.markdown("---")
             else:
                 st.warning("⚠️ 질문을 입력해주세요!")
 
 # ============================================================================
-# TAB 2: 차트
+# TAB 2: 과거 상담 기록
 # ============================================================================
 
 with tab2:
-    st.subheader("📈 차트 시각화")
+    st.subheader("📚 과거 상담 기록")
     
-    dates = pd.date_range(end=datetime.now(), periods=30, freq='D')
-    kospi_base = 2700
-    kospi_prices = kospi_base + np.cumsum(np.random.randn(30) * 20)
+    history = load_history()
     
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=dates, y=kospi_prices, mode='lines', name='KOSPI', line=dict(color='#052d7a', width=3)))
-    fig.update_layout(title="📊 KOSPI 30일 차트", height=400, template='plotly_white')
-    
-    st.markdown('<div class="chart-animated">', unsafe_allow_html=True)
-    st.plotly_chart(fig, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+    if history:
+        st.success(f"✅ 총 {len(history)}개의 상담 기록")
+        st.divider()
+        
+        for idx, (user, ai, emo, risk, tags, timestamp) in enumerate(history, 1):
+            with st.expander(f"💬 상담 #{idx} | {timestamp} | {tags}", expanded=False):
+                col1, col2 = st.columns([1, 1])
+                
+                with col1:
+                    st.markdown(f"**👤 당신의 질문:**\n{user}")
+                    st.markdown(f"**💙 감정 점수:** {emo} / 10")
+                
+                with col2:
+                    st.markdown(f"**⚠️ 위험지표:** {risk.upper()}")
+                    st.markdown(f"**🏷️ 태그:** {tags}")
+                
+                st.markdown("---")
+                st.markdown(f"**🤖 라이라의 답변:**\n{ai}")
+    else:
+        st.info("📝 아직 상담 기록이 없습니다. 상담을 시작해보세요! 💙")
 
 # ============================================================================
-# TAB 3: 포트폴리오
+# TAB 3: 감정 통계
 # ============================================================================
 
 with tab3:
+    st.subheader("📈 감정 패턴 분석")
+    
+    stats = get_emotion_stats()
+    
+    if stats:
+        # 데이터 준비
+        emotions = [s[0] for s in stats]
+        timestamps = [s[1] for s in stats]
+        
+        # 그래프
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(
+            x=timestamps,
+            y=emotions,
+            mode='lines+markers',
+            name='감정 점수',
+            line=dict(color='#052d7a', width=3),
+            marker=dict(size=8)
+        ))
+        
+        fig.update_layout(
+            title="감정 점수 변화 추이",
+            xaxis_title="시간",
+            yaxis_title="감정 점수 (0-10)",
+            height=400,
+            template='plotly_white'
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # 통계
+        avg_emotion = np.mean(emotions)
+        max_emotion = max(emotions)
+        min_emotion = min(emotions)
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("평균 감정", f"{avg_emotion:.1f} / 10")
+        with col2:
+            st.metric("최고 감정", f"{max_emotion:.1f} / 10")
+        with col3:
+            st.metric("최저 감정", f"{min_emotion:.1f} / 10")
+    else:
+        st.info("📊 아직 감정 데이터가 없습니다.")
+
+# ============================================================================
+# TAB 4: 포트폴리오
+# ============================================================================
+
+with tab4:
     st.subheader("💼 포트폴리오 추적")
     
     col1, col2, col3, col4 = st.columns(4)
@@ -350,42 +498,39 @@ with tab3:
             st.markdown(f'<div class="success-float"><strong>{stock["종목명"]}</strong> | 매입: ₩{stock["매입가"]:,} | 현재: ₩{stock["현재가"]:,} | 수량: {stock["수량"]}개 | <span style="color: #28a745; font-weight: bold;">+{stock["수익률"]:.2f}%</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
-# TAB 4: 설정
+# TAB 5: 설정
 # ============================================================================
 
-with tab4:
+with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info("""
-    **GINI Guardian v2.2 - 라이라 최적화 버전**
+    **GINI Guardian v2.3 - SQLite 상담 기록 시스템**
     
-    ✅ 라이라님의 우아한 위험지표 시스템
-    ✅ 간단한 10줄 코드로 강력한 분석
-    ✅ 쉬운 확장성 (volatility, news 추가 가능)
-    ✅ Groq API (무료 + 초빠름)
-    
-    **위험지표 계산식:**
-    ```
-    risk = emotion × 50% + volatility × 30% + news × 20%
-    ```
+    ✅ 모든 상담이 영구적으로 저장됨
+    ✅ 감정 패턴 분석 가능
+    ✅ 과거 기록 조회 가능
+    ✅ 감정 통계 시각화
+    ✅ 라이라의 완벽한 DB 설계
     
     **다음 업데이트:**
-    - SQLite 상담 기록 저장
     - Finnhub API 연동
-    - 감정 패턴 분석
+    - 감정 패턴 AI 분석
+    - 주간/월간 리포트
     """)
     
-    st.markdown("#### 📋 라이라님의 천재 코드")
+    st.markdown("#### 📋 라이라님의 DB 스키마")
     st.code("""
-def calc_risk_score(emotion, volatility=0, news=0):
-    score = emotion * 0.5 + volatility * 0.3 + news * 0.2
-    return round(score, 2)
-
-# 사용 예시
-emotion_score = 7.0
-risk = calc_risk_score(emotion_score)
-st.markdown(f"### 📊 위험지표: {risk} / 10")
-    """, language="python")
+CREATE TABLE IF NOT EXISTS chats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_input TEXT NOT NULL,
+    ai_response TEXT NOT NULL,
+    emotion_score REAL,
+    risk_level TEXT,
+    tags TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+    """, language="sql")
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v2.2 (Lyra Edition)** | 💙 라이라 설계 × 미라클 구현")
+st.markdown("---\n🛡️ **GINI Guardian v2.3** | 📚 SQLite 상담 기록 | 💙 라이라 설계 × 미라클 구현")
