@@ -390,7 +390,11 @@ def generate_tag_cloud():
     # 모든 태그 파싱
     tag_list = []
     for tags_str in all_tags:
-        tag_list.extend([t.strip() for t in tags_str.split(',')])
+        if tags_str:  # None 체크!
+            tag_list.extend([t.strip() for t in tags_str.split(',')])
+    
+    if not tag_list:  # 태그가 없으면
+        return None
     
     tag_counts = Counter(tag_list)
     
