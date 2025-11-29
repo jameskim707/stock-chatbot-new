@@ -382,42 +382,49 @@ def generate_risk_chart():
 
 def generate_tag_cloud():
     """태그 워드클라우드"""
-    all_tags = get_all_tags()
-    
-    if not all_tags:
+    try:
+        all_tags = get_all_tags()
+        
+        if not all_tags:
+            return None
+        
+        # 모든 태그 파싱
+        tag_list = []
+        for tag_row in all_tags:
+            # tag_row는 튜플이므로 첫 번째 요소만 추출
+            tags_str = tag_row[0] if isinstance(tag_row, tuple) else tag_row
+            
+            if tags_str and isinstance(tags_str, str):
+                tag_list.extend([t.strip() for t in tags_str.split(',')])
+        
+        if not tag_list:
+            return None
+        
+        tag_counts = Counter(tag_list)
+        
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            y=list(tag_counts.keys()),
+            x=list(tag_counts.values()),
+            orientation='h',
+            marker=dict(color=list(tag_counts.values()), colorscale='Reds'),
+            text=list(tag_counts.values()),
+            textposition='auto'
+        ))
+        
+        fig.update_layout(
+            title="🏷️ 감정 태그 분석 (빈도)",
+            xaxis_title="출현 횟수",
+            yaxis_title="감정 태그",
+            height=400,
+            template='plotly_white',
+            showlegend=False
+        )
+        
+        return fig
+    except Exception as e:
+        st.error(f"태그 분석 에러: {str(e)}")
         return None
-    
-    # 모든 태그 파싱
-    tag_list = []
-    for tags_str in all_tags:
-        if tags_str:  # None 체크!
-            tag_list.extend([t.strip() for t in tags_str.split(',')])
-    
-    if not tag_list:  # 태그가 없으면
-        return None
-    
-    tag_counts = Counter(tag_list)
-    
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        y=list(tag_counts.keys()),
-        x=list(tag_counts.values()),
-        orientation='h',
-        marker=dict(color=list(tag_counts.values()), colorscale='Reds'),
-        text=list(tag_counts.values()),
-        textposition='auto'
-    ))
-    
-    fig.update_layout(
-        title="🏷️ 감정 태그 분석 (빈도)",
-        xaxis_title="출현 횟수",
-        yaxis_title="감정 태그",
-        height=400,
-        template='plotly_white',
-        showlegend=False
-    )
-    
-    return fig
 
 # ============================================================================
 # 📊 GO #3-4: 상담 요약 테이블
