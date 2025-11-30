@@ -21,7 +21,9 @@ import os
 from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
+st.markdown("""
 <style>
+
 /* --- 전체 배경을 밝은 민트톤으로 --- */
 .stApp {
     background-color: #E8FCF7 !important;
@@ -71,7 +73,10 @@ h1, h2, h3, h4 {
     border-radius: 12px;
     box-shadow: 0 0 8px rgba(0,0,0,0.05);
 }
+
 </style>
+""", unsafe_allow_html=True)
+
 
 
 
@@ -2277,6 +2282,7 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
+
 
 
 
