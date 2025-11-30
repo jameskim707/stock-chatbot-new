@@ -761,7 +761,7 @@ def save_dangerous_moment(risk_score, emotion_tags, user_input):
     VALUES (datetime('now'), ?, ?, ?)
     """, (risk_score, tags_str, user_input))
     
-    conn.()
+    conn.commit()
     conn.close()
 
 def update_addiction_pattern(hour, day_of_week, purpose="만회"):
@@ -804,7 +804,7 @@ def save_pressure_result(message_type, emotion_tag, user_stopped):
     VALUES (?, ?, ?)
     """, (message_type, emotion_tag, user_stopped))
     
-    conn.()
+    conn.commit()
     conn.close()
 
 @st.cache_data(ttl=60)
