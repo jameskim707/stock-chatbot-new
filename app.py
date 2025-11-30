@@ -1,7 +1,8 @@
 """
-🛡️ GINI Guardian v3.2 — 종목명 인식 완벽 시스템!
-✨ NEW: 제미니 전략 구현 - 퍼지 매칭 + 확인 루프
-✨ "상승전자" → "삼성전자" 자동 보정!
+🛡️ GINI Guardian v3.3 — 텍스트 권위 강화!
+✨ 음성 제거 → 명확한 텍스트 중심 상담
+✨ 종목명 완벽 인식 (퍼지 매칭)
+✨ 핵심 로직 강화
 
 라이라 설계 × 미라클 구현 × 제미니 전략 🔥
 """
@@ -15,21 +16,11 @@ from groq import Groq
 import re
 import sqlite3
 from collections import Counter
-from gtts import gTTS
 import io
 import os
-
-# 실시간 주식 모듈
-try:
-    from pykrx import stock as pykrx_stock
-    PYKRX_AVAILABLE = True
-except:
-    PYKRX_AVAILABLE = False
-
-import random
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v3.2", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v3.3", page_icon="🛡️", layout="wide")
 
 # ============================================================================
 # 📊 종목명 데이터베이스 (제미니 전략)
@@ -114,6 +105,14 @@ def extract_and_correct_stocks(text):
 # 📊 실시간 주식 데이터 함수들
 # ============================================================================
 
+try:
+    from pykrx import stock as pykrx_stock
+    PYKRX_AVAILABLE = True
+except:
+    PYKRX_AVAILABLE = False
+
+import random
+
 def get_stock_price_realtime(ticker):
     """실시간 주가 조회 (pykrx 또는 Mock)"""
     if PYKRX_AVAILABLE:
@@ -150,7 +149,8 @@ def get_mock_stock_data(ticker):
         '035420': {'name': 'NAVER', 'base_price': 200000},
         '035720': {'name': '카카오', 'base_price': 50000},
         '207940': {'name': '삼성바이오로직스', 'base_price': 800000},
-        '051910': {'name': 'LG화학', 'base_price': 400000}
+        '051910': {'name': 'LG화학', 'base_price': 400000},
+        '042700': {'name': '한미반도체', 'base_price': 70000},
     }
     
     if ticker in mock_stocks:
@@ -201,14 +201,13 @@ def update_portfolio_realtime(portfolio):
             total_buy += buy_amount
             total_value += current_amount
         else:
-            # 데이터 조회 실패해도 표시 (매입가 기준)
             buy_amount = item['매입가'] * item['수량']
             
             updated.append({
                 '종목코드': item['종목코드'],
                 '종목명': item.get('종목명', '정보없음'),
                 '매입가': item['매입가'],
-                '현재가': item['매입가'],  # 데이터 없으면 매입가로 표시
+                '현재가': item['매입가'],
                 '수량': item['수량'],
                 '매입금액': buy_amount,
                 '평가금액': buy_amount,
@@ -258,7 +257,6 @@ def create_tables():
     );
     """)
     
-    # 포트폴리오 테이블 추가
     cur.execute("""
     CREATE TABLE IF NOT EXISTS portfolio (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -341,14 +339,10 @@ def delete_portfolio_stock(ticker):
     conn.commit()
     conn.close()
 
-# ============================================================================
-# 앱 시작 시 테이블 생성
-# ============================================================================
-
 create_tables()
 
 # ============================================================================
-# 🎨 애니메이션 CSS (이전과 동일)
+# 🎨 애니메이션 CSS
 # ============================================================================
 
 ANIMATION_CSS = """
@@ -403,13 +397,32 @@ ANIMATION_CSS = """
         border-left: 5px solid #28a745; 
         margin-bottom: 10px; 
     }
+    
+    .warning-box {
+        background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%);
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 8px solid #ff6b00;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .danger-box {
+        background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+        padding: 20px;
+        border-radius: 15px;
+        border-left: 8px solid #dc3545;
+        margin: 20px 0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        animation: hot-pulse 2s infinite;
+    }
 </style>
 """
 
 st.markdown(ANIMATION_CSS, unsafe_allow_html=True)
 
 # ============================================================================
-# 🎯 위험지표 계산 (이전과 동일)
+# 🎯 위험지표 계산
 # ============================================================================
 
 def calc_risk_score(emotion, volatility=0, news=0):
@@ -452,8 +465,39 @@ def detect_tags(user_input):
     
     return ", ".join(tags) if tags else "중립"
 
+def get_strong_warning(risk_level):
+    """위험도에 따른 강력한 경고 메시지"""
+    if risk_level == "high":
+        return """
+        <div class="danger-box">
+            <h2 style="color: #dc3545; margin: 0;">⛔ 긴급 경고 ⛔</h2>
+            <h3 style="color: #721c24; margin-top: 10px;">지금 당장 거래를 멈추세요!</h3>
+            <p style="font-size: 1.1em; font-weight: bold; color: #721c24;">
+            당신의 감정 상태는 극도로 불안정합니다.<br>
+            이 상태에서의 투자 결정은 99% 실패합니다.<br><br>
+            <strong>즉시 행동할 것:</strong><br>
+            1. 거래 앱을 끄세요<br>
+            2. 최소 24시간 쉬세요<br>
+            3. 신뢰할 수 있는 사람과 대화하세요
+            </p>
+        </div>
+        """
+    elif risk_level == "mid":
+        return """
+        <div class="warning-box">
+            <h3 style="color: #856404; margin: 0;">⚠️ 주의 필요</h3>
+            <p style="font-size: 1.05em; color: #856404;">
+            당신의 감정 상태가 흔들리고 있습니다.<br>
+            오늘은 거래를 하지 않는 것이 현명합니다.<br><br>
+            잠시 멈추고, 내일 다시 생각해보세요.
+            </p>
+        </div>
+        """
+    else:
+        return ""
+
 # ============================================================================
-# 🤖 Groq 상담 함수 (이전과 동일)
+# 🤖 Groq 상담 함수
 # ============================================================================
 
 def groq_counsel(user_text):
@@ -463,18 +507,20 @@ def groq_counsel(user_text):
         
         client = Groq(api_key=api_key)
         
-        prompt = f"""당신은 전문 투자 심리 상담 AI입니다.
-사용자의 감정, 투자 수준을 자연스럽게 추론하여 상담해주세요.
+        prompt = f"""당신은 냉철하고 권위 있는 투자 심리 상담 전문가입니다.
+감정적인 투자를 막고, 이성적 판단을 돕는 것이 목표입니다.
 
 사용자 질문: {user_text}
 
-1. 감정 점수를 0~10으로 평가 (0=매우 안정, 10=극도로 불안/흥분)
-2. 따뜻하면서도 논리적인 조언 제공
-3. 과매매 위험이 있으면 강하게 경고
+**상담 원칙:**
+1. 감정 점수 0~10으로 평가 (0=매우 안정, 10=극도로 불안/흥분)
+2. 직설적이고 명확한 조언 (애매한 표현 금지)
+3. 과매매 위험 감지 시 강력하게 경고
+4. 구체적인 행동 지침 제시
 
-응답 형식:
+**응답 형식:**
 [감정점수: X]
-상담 내용...
+(명확하고 직설적인 상담 내용)
 """
         
         response = client.chat.completions.create(
@@ -486,11 +532,9 @@ def groq_counsel(user_text):
         
         full_response = response.choices[0].message.content
         
-        # 감정 점수 추출
         emotion_match = re.search(r'\[감정점수[:\s]*(\d+(?:\.\d+)?)\]', full_response)
         emotion_score = float(emotion_match.group(1)) if emotion_match else 5.0
         
-        # 감정 점수 제거한 응답
         clean_response = re.sub(r'\[감정점수[:\s]*\d+(?:\.\d+)?\]', '', full_response).strip()
         
         return clean_response, emotion_score
@@ -499,113 +543,15 @@ def groq_counsel(user_text):
         return f"상담 중 오류가 발생했습니다: {str(e)}", 5.0
 
 # ============================================================================
-# 🎤 음성 생성 함수 (이전과 동일)
-# ============================================================================
-
-def text_to_speech(text):
-    """텍스트 → 음성 변환"""
-    try:
-        tts = gTTS(text=text, lang='ko', slow=False)
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        return fp
-    except Exception as e:
-        st.error(f"음성 생성 실패: {e}")
-        return None
-
-# ============================================================================
-# 🎙️ 음성 입력 함수 (NEW!)
-# ============================================================================
-
-def correct_stock_names(text):
-    """
-    AI를 사용해 잘못 인식된 종목명 보정
-    
-    Args:
-        text: 음성 인식된 텍스트
-    
-    Returns:
-        str: 보정된 텍스트
-    """
-    try:
-        api_key = os.getenv("GROQ_API_KEY") or "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"
-        client = Groq(api_key=api_key)
-        
-        prompt = f"""다음 텍스트에서 잘못 인식된 주식 종목명이나 투자 용어를 올바르게 보정해주세요.
-        
-원본: {text}
-
-주요 종목명:
-- 삼성전자 (상승전자 ❌)
-- SK하이닉스
-- NAVER (네이버)
-- 카카오
-- LG화학
-- 현대차
-- 기아
-- 포스코
-- 셀트리온
-- 삼성바이오로직스
-- 한미반도체
-
-보정된 텍스트만 출력하세요. 설명 없이 텍스트만."""
-
-        response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.1,
-            max_tokens=200
-        )
-        
-        corrected = response.choices[0].message.content.strip()
-        return corrected
-        
-    except:
-        # 보정 실패하면 원본 반환
-        return text
-    """
-    Groq Whisper로 음성 → 텍스트 변환
-    
-    Args:
-        audio_bytes: 오디오 파일 바이트
-    
-    Returns:
-        str: 변환된 텍스트
-    """
-    try:
-        api_key = os.getenv("GROQ_API_KEY") or "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"
-        client = Groq(api_key=api_key)
-        
-        # 오디오 파일 객체 생성
-        audio_file = io.BytesIO(audio_bytes)
-        audio_file.name = "audio.wav"
-        
-        # Whisper API 호출 (주식 종목명 힌트 추가)
-        transcription = client.audio.transcriptions.create(
-            model="whisper-large-v3-turbo",
-            file=audio_file,
-            language="ko",
-            prompt="삼성전자, SK하이닉스, NAVER, 카카오, LG화학, 현대차, 기아, 포스코, 셀트리온, 삼성바이오로직스, 한미반도체, 주식, 투자, 손실, 수익, 매수, 매도, 손절, 익절"  # 주식 용어 힌트
-        )
-        
-        return transcription.text
-        
-    except Exception as e:
-        return f"❌ 음성 인식 실패: {str(e)}"
-
-# ============================================================================
 # Session State 초기화
 # ============================================================================
 
 if 'portfolio' not in st.session_state:
-    # DB에서 로드 시도
     db_portfolio = load_portfolio_from_db()
     
     if db_portfolio:
         st.session_state.portfolio = db_portfolio
     else:
-        # 기본 샘플 포트폴리오
         st.session_state.portfolio = [
             {'종목코드': '005930', '종목명': '삼성전자', '매입가': 70000, '수량': 10},
             {'종목코드': '000660', '종목명': 'SK하이닉스', '매입가': 130000, '수량': 5}
@@ -615,207 +561,79 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.2</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 종목명 완벽 인식 (제미니 전략) 🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.3</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">권위 있는 텍스트 상담 🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
 # ============================================================================
 
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "🧭 일반 상담",
-    "🎙️ 완전 음성 상담 (NEW!)", 
+tab1, tab2, tab3, tab4 = st.tabs([
+    "🧭 AI 상담",
     "📚 상담 기록",
     "💼 실시간 포트폴리오",
     "⚙️ 설정"
 ])
 
 # ============================================================================
-# TAB 1: 일반 상담 (이전과 동일)
+# TAB 1: AI 상담 (텍스트 강화)
 # ============================================================================
 
 with tab1:
-    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">💬 일반 상담</span></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">💬 투자 심리 상담</span></div>', unsafe_allow_html=True)
     
-    st.subheader("💬 텍스트 상담")
-    st.info("✨ 투자 고민을 편하게 이야기해주세요!")
+    st.info("✨ 감정적 투자를 막고 이성적 판단을 돕는 AI 상담사입니다.")
+    
+    # 종목명 자동 보정 안내
+    with st.expander("💡 종목명 자동 보정 기능", expanded=False):
+        st.write("""
+        **오타가 있어도 걱정 마세요!**
+        - '상승전자' → '삼성전자' 자동 보정
+        - '항미반도체' → '한미반도체' 자동 보정
+        - '네이바' → 'NAVER' 자동 보정
+        
+        AI가 자동으로 정확한 종목명을 찾아드립니다!
+        """)
     
     user_input = st.text_area(
-        "예) 손실이 커서 너무 힘들어요",
-        height=100,
+        "💬 투자 고민을 솔직하게 말씀해주세요:",
+        height=120,
+        placeholder="예) 삼성전자 손실이 커서 너무 힘들어요...\n예) 오늘 카카오 급등했는데 지금 사도 될까요?",
         key="chat_textarea"
     )
     
-    col1, col2 = st.columns([1, 3])
-    
-    with col1:
-        if st.button("🧭 상담하기", use_container_width=True, type="primary"):
-            if user_input.strip():
-                with st.spinner("🤔 AI가 분석 중... (2~3초)"):
-                    response, emotion_score = groq_counsel(user_input)
-                    
-                    volatility_score = 5.0
-                    news_score = 3.0
-                    risk = calc_risk_score(emotion_score, volatility_score, news_score)
-                    risk_emoji = get_risk_emoji(risk)
-                    risk_level = detect_risk_level(risk)
-                    tags = detect_tags(user_input)
-                    
-                    save_chat(user_input, response, emotion_score, risk_level, tags)
-                    
-                    st.markdown("---")
-                    
-                    col_risk1, col_risk2 = st.columns(2)
-                    
-                    with col_risk1:
-                        st.metric(
-                            label="📊 위험지표",
-                            value=f"{risk} / 10",
-                            delta=None
-                        )
-                    
-                    with col_risk2:
-                        st.info(f"**{risk_emoji}**")
-                    
-                    st.divider()
-                    
-                    st.markdown("### 🧭 AI 상담 결과")
-                    st.write(response)
-                    
-                    st.success("✅ 상담 기록이 저장되었습니다! 📚")
-                    
-                    st.markdown("---")
-            else:
-                st.warning("⚠️ 질문을 입력해주세요!")
-
-# ============================================================================
-# TAB 2: 완전 음성 상담 (NEW! 음성 입력 + 음성 출력)
-# ============================================================================
-
-with tab2:
-    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🎤 완전 음성 상담</span></div>', unsafe_allow_html=True)
-    
-    st.subheader("🎙️ 음성 입력 + 음성 출력")
-    st.info("✨ NEW! 말로 고민을 털어놓으면 AI가 음성으로 답변해드립니다!")
-    
-    # 입력 방식 선택
-    input_mode = st.radio(
-        "입력 방식 선택:",
-        ["🎙️ 음성으로 말하기 (NEW!)", "⌨️ 텍스트로 입력하기"],
-        horizontal=True
-    )
-    
-    user_input_text = ""
-    
-    if input_mode == "🎙️ 음성으로 말하기 (NEW!)":
-        st.markdown("---")
-        st.markdown("### 🎙️ 음성 녹음")
-        st.write("음성 파일을 업로드하거나 녹음해주세요:")
-        
-        # 파일 업로드 방식 (호환성)
-        audio_value = st.file_uploader(
-            "🎙️ 음성 파일 선택 (.wav, .mp3, .m4a)",
-            type=['wav', 'mp3', 'm4a', 'ogg'],
-            key="audio_upload"
-        )
-        
-        if audio_value:
-            st.success("✅ 파일 업로드 완료!")
-            st.audio(audio_value)
+    if st.button("🧭 AI 상담 받기", use_container_width=True, type="primary"):
+        if user_input.strip():
+            # 종목명 자동 보정
+            correction_result = extract_and_correct_stocks(user_input)
             
-            if st.button("🎤 음성 인식 시작", type="primary"):
-                with st.spinner("🤔 AI가 듣고 있습니다..."):
-                    audio_bytes = audio_value.read()
-                    raw_text = speech_to_text_groq(audio_bytes)
-                    
-                    if "❌" not in raw_text:
-                        st.info(f"📝 원본 인식: {raw_text}")
-                        
-                        # 제미니 전략: 종목명 퍼지 매칭 보정
-                        with st.spinner("✨ 종목명 분석 중..."):
-                            correction_result = extract_and_correct_stocks(raw_text)
-                        
-                        # 종목명 발견 및 보정
-                        if correction_result['found_stocks']:
-                            st.markdown("---")
-                            st.markdown("### 🎯 종목명 인식 결과")
-                            
-                            for stock in correction_result['found_stocks']:
-                                confidence = stock['confidence']
-                                
-                                if confidence == 1.0:
-                                    # 정확한 인식
-                                    st.success(f"✅ **{stock['corrected']}** ({stock['code']}) - 정확히 인식됨!")
-                                else:
-                                    # 보정 필요 - 확인 루프
-                                    st.warning(f"⚠️ '{stock['original']}'로 인식되었습니다.")
-                                    st.info(f"💡 혹시 **{stock['corrected']}** ({stock['code']})를 말씀하신 건가요? (신뢰도: {confidence:.0%})")
-                                    
-                                    # 대안 제시
-                                    if stock['alternatives']:
-                                        alt_names = [f"{s[0]} ({s[2]:.0%})" for s in stock['alternatives']]
-                                        st.write(f"🔄 다른 가능성: {', '.join(alt_names)}")
-                                    
-                                    # 확인 버튼
-                                    col1, col2 = st.columns(2)
-                                    
-                                    with col1:
-                                        if st.button(f"✅ 네, {stock['corrected']} 맞습니다", key=f"confirm_{stock['original']}"):
-                                            st.session_state.voice_recognized_text = correction_result['corrected']
-                                            st.success("확인되었습니다!")
-                                            st.rerun()
-                                    
-                                    with col2:
-                                        if st.button("🔄 다시 녹음할게요", key=f"retry_{stock['original']}"):
-                                            st.session_state.voice_recognized_text = ""
-                                            st.rerun()
-                            
-                            # 자동 보정된 텍스트 저장
-                            if not correction_result['needs_confirmation']:
-                                st.session_state.voice_recognized_text = correction_result['corrected']
-                                st.success(f"✅ 최종 인식: {correction_result['corrected']}")
-                        else:
-                            # 종목명 없음
-                            st.session_state.voice_recognized_text = raw_text
-                            st.success(f"✅ 인식 완료: {raw_text}")
-                        
+            if correction_result['found_stocks']:
+                st.markdown("---")
+                st.markdown("### 🎯 종목명 인식")
+                
+                for stock in correction_result['found_stocks']:
+                    if stock['confidence'] == 1.0:
+                        st.success(f"✅ {stock['corrected']} ({stock['code']})")
                     else:
-                        st.error(raw_text)
-                        user_input_text = ""
-        
-        # 인식된 텍스트가 있으면 표시
-        if 'voice_recognized_text' in st.session_state and st.session_state.voice_recognized_text:
-            user_input_text = st.session_state.voice_recognized_text
-            st.info(f"💬 인식된 내용: {user_input_text}")
-    
-    else:  # 텍스트 입력
-        st.markdown("---")
-        st.markdown("### ⌨️ 텍스트 입력")
-        user_input_text = st.text_area(
-            "예) 어제 손실이 커서 정말 답답해요",
-            height=100,
-            key="voice_text_input"
-        )
-    
-    st.markdown("---")
-    
-    # 상담 시작 버튼
-    if st.button("🎤 음성 상담 시작", use_container_width=True, type="primary"):
-        if user_input_text and user_input_text.strip() and "❌" not in user_input_text:
+                        st.info(f"💡 '{stock['original']}' → **{stock['corrected']}** ({stock['code']}) 으로 보정되었습니다.")
+                
+                user_input = correction_result['corrected']
+            
+            st.markdown("---")
+            
             with st.spinner("🤔 AI가 분석 중... (2~3초)"):
-                response, emotion_score = groq_counsel(user_input_text)
+                response, emotion_score = groq_counsel(user_input)
                 
                 volatility_score = 5.0
                 news_score = 3.0
                 risk = calc_risk_score(emotion_score, volatility_score, news_score)
                 risk_emoji = get_risk_emoji(risk)
                 risk_level = detect_risk_level(risk)
-                tags = detect_tags(user_input_text)
+                tags = detect_tags(user_input)
                 
-                save_chat(user_input_text, response, emotion_score, risk_level, tags)
+                save_chat(user_input, response, emotion_score, risk_level, tags)
                 
-                st.markdown("---")
-                
+                # 위험도 표시
                 col_risk1, col_risk2 = st.columns(2)
                 
                 with col_risk1:
@@ -828,38 +646,28 @@ with tab2:
                 with col_risk2:
                     st.info(f"**{risk_emoji}**")
                 
+                # 강력한 경고 메시지 (위험도 높을 때)
+                warning_html = get_strong_warning(risk_level)
+                if warning_html:
+                    st.markdown(warning_html, unsafe_allow_html=True)
+                
                 st.divider()
                 
+                # AI 상담 결과
                 st.markdown("### 🧭 AI 상담 결과")
                 st.write(response)
                 
-                st.divider()
-                
-                st.markdown("### 🎤 음성 답변")
-                st.info("⏸️ 아래 플레이어에서 음성 답변을 들어보세요!")
-                
-                with st.spinner("🎵 음성 생성 중..."):
-                    audio_fp = text_to_speech(response)
-                    
-                    if audio_fp:
-                        st.audio(audio_fp, format='audio/mp3')
-                        st.success("✅ 음성 상담이 완료되었습니다! 🎤")
-                        
-                        # 인식된 텍스트 초기화
-                        if 'voice_recognized_text' in st.session_state:
-                            st.session_state.voice_recognized_text = ""
-                    else:
-                        st.error("❌ 음성 생성에 실패했습니다.")
+                st.success("✅ 상담 기록이 저장되었습니다! 📚")
                 
                 st.markdown("---")
         else:
-            st.warning("⚠️ 질문을 입력하거나 음성을 녹음해주세요!")
+            st.warning("⚠️ 질문을 입력해주세요!")
 
 # ============================================================================
-# TAB 3: 상담 기록 (이전과 동일)
+# TAB 2: 상담 기록
 # ============================================================================
 
-with tab3:
+with tab2:
     st.subheader("📚 과거 상담 기록")
     
     history = load_history()
@@ -881,20 +689,19 @@ with tab3:
                     st.markdown(f"**🏷️ 태그:** {tags}")
                 
                 st.markdown("---")
-                st.markdown(f"**🤖 라이라의 답변:**\n{ai}")
+                st.markdown(f"**🤖 AI의 답변:**\n{ai}")
     else:
         st.info("📝 아직 상담 기록이 없습니다.")
 
 # ============================================================================
-# TAB 4: 실시간 포트폴리오 (NEW!)
+# TAB 3: 실시간 포트폴리오
 # ============================================================================
 
-with tab4:
+with tab3:
     st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">💼 실시간 포트폴리오 🔥</span></div>', unsafe_allow_html=True)
     
     st.info("✨ pykrx 기반 실시간 주가 추적 (20분 지연)")
     
-    # 새로고침 버튼
     col_refresh, col_add = st.columns([1, 3])
     
     with col_refresh:
@@ -903,12 +710,10 @@ with tab4:
     
     st.divider()
     
-    # 포트폴리오 업데이트
     if st.session_state.portfolio:
         with st.spinner("📊 실시간 데이터 조회 중..."):
             updated_portfolio, summary = update_portfolio_realtime(st.session_state.portfolio)
         
-        # 전체 요약
         col1, col2, col3, col4 = st.columns(4)
         
         profit_color = "#28a745" if summary['총손익'] >= 0 else "#dc3545"
@@ -924,7 +729,6 @@ with tab4:
         
         st.divider()
         
-        # 보유 종목
         st.markdown("### 📊 보유 종목")
         
         for stock in updated_portfolio:
@@ -932,7 +736,6 @@ with tab4:
             bg_color = "#fff3cd" if stock['수익률'] < 0 else "#d4edda" if stock['수익률'] > 0 else "#e9ecef"
             text_color = "#dc3545" if stock['수익률'] < 0 else "#28a745" if stock['수익률'] > 0 else "#6c757d"
             
-            # 데이터 없는 종목 표시
             data_status = "⚠️ 실시간 데이터 없음" if stock['수익률'] == 0 and stock['등락률'] == 0 else ""
             
             col_stock, col_delete = st.columns([6, 1])
@@ -958,7 +761,6 @@ with tab4:
         
         st.divider()
         
-        # 과매매 경고
         if summary['수익률'] < -5:
             st.error("🚨 포트폴리오 손실이 -5%를 넘었습니다! 감정적 매매를 조심하세요!")
         
@@ -967,7 +769,6 @@ with tab4:
     
     st.divider()
     
-    # 종목 추가
     st.markdown("### ➕ 종목 추가하기")
     
     with st.form("add_stock_form", clear_on_submit=True):
@@ -986,10 +787,8 @@ with tab4:
         
         if submitted:
             if new_ticker and new_name and new_buy_price > 0:
-                # DB에 저장
                 save_portfolio_stock(new_ticker, new_name, new_buy_price, new_quantity)
                 
-                # Session state 업데이트
                 st.session_state.portfolio.append({
                     '종목코드': new_ticker,
                     '종목명': new_name,
@@ -1003,49 +802,53 @@ with tab4:
                 st.warning("⚠️ 모든 항목을 올바르게 입력해주세요!")
 
 # ============================================================================
-# TAB 5: 설정
+# TAB 4: 설정
 # ============================================================================
 
-with tab5:
+with tab4:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v3.1 - 완전 음성 상담 시스템 완성!**
+    **GINI Guardian v3.3 - 텍스트 권위 강화!**
     
-    🆕 NEW: 음성 입력 (STT) 기능
-       - Groq Whisper 기반 음성 인식
-       - 말로 고민 털어놓기 → 음성으로 답변받기
-       - 완전한 음성 상담 시스템
-       - 한국어 완벽 지원
-       - 무료! (Groq API 사용)
+    🆕 v3.3 변경사항:
+       - 음성 기능 제거 → 명확한 텍스트 중심
+       - 권위 있는 직설적 조언
+       - 강력한 경고 메시지 시스템
+       - 핵심 로직에 집중
     
-    ✅ v3.0 기능:
-       - 실시간 포트폴리오 (pykrx)
-       - 자동 수익률 계산
-       - 종목 추가/삭제
-    
-    ✅ 기존 기능:
-       - 텍스트/음성(TTS) 상담
-       - 감정 점수 분석
-       - 위험지표 계산
+    ✅ 핵심 기능:
+       - 종목명 자동 보정 (퍼지 매칭)
+       - 실시간 포트폴리오 추적
+       - 감정 분석 & 위험지표
        - 상담 기록 저장
     
     **다음 업그레이드:**
-    - 맥락 기억 AI (과거 상담 내용 기억)
     - 위험지표 고도화 (거래 패턴 분석)
-    - 감정 태그 12종 확장
-    - 대시보드 실제 구현
+    - 맥락 기억 AI (과거 상담 내용 기억)
+    - 대시보드 완성 (감정 히트맵)
+    - 주간 리포트 자동 생성
     """)
     
     st.markdown("#### 📋 기술 스택")
     st.code("""
 - Streamlit: UI/UX
-- Groq API: AI 상담 + Whisper STT
-- gTTS: 음성 생성 (TTS)
+- Groq API: AI 상담
 - pykrx: 실시간 주식 데이터
 - SQLite: 데이터 저장
 - Plotly: 차트 시각화
+- 퍼지 매칭: 종목명 보정
     """, language="python")
+    
+    st.markdown("#### 🎯 설계 철학")
+    st.write("""
+    **제미니 전략:**
+    - 기계적 음성보다 명확한 텍스트가 더 권위 있음
+    - 흥분한 투자자에게는 냉철하고 직설적인 조언 필요
+    - 핵심 기능의 완성도가 가장 중요
+    
+    **라이라 설계 × 미라클 구현 × 제미니 전략**
+    """)
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v3.1** | 🎙️ 완전 음성 상담 | 💙 라이라 설계 × 미라클 구현")
+st.markdown("---\n🛡️ **GINI Guardian v3.3** | 💬 텍스트 권위 강화 | 💙 라이라 × 미라클 × 제미니")
