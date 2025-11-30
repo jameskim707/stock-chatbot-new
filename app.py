@@ -1,8 +1,9 @@
 """
-🛡️ GINI Guardian v3.3 — 텍스트 권위 강화!
+🛡️ GINI Guardian v3.3 — 텍스트 권위 강화! (최적화)
 ✨ 음성 제거 → 명확한 텍스트 중심 상담
 ✨ 종목명 완벽 인식 (퍼지 매칭)
 ✨ 핵심 로직 강화
+⚡ 성능 최적화: 캐싱 시스템 추가!
 
 라이라 설계 × 미라클 구현 × 제미니 전략 🔥
 """
@@ -113,8 +114,9 @@ except:
 
 import random
 
+@st.cache_data(ttl=300)  # 5분 캐싱
 def get_stock_price_realtime(ticker):
-    """실시간 주가 조회 (pykrx 또는 Mock)"""
+    """실시간 주가 조회 (pykrx 또는 Mock) - 5분 캐싱"""
     if PYKRX_AVAILABLE:
         try:
             end_date = datetime.now()
@@ -235,8 +237,9 @@ def update_portfolio_realtime(portfolio):
 # 🗄️ SQLite 데이터베이스 함수
 # ============================================================================
 
+@st.cache_resource
 def get_connection():
-    """SQLite 연결"""
+    """SQLite 연결 (캐싱)"""
     conn = sqlite3.connect("gini.db", check_same_thread=False)
     return conn
 
@@ -283,9 +286,14 @@ def save_chat(user_input, ai_response, emotion_score, risk_level, tags):
     
     conn.commit()
     conn.close()
+    
+    # 캐시 무효화
+    load_history.clear()
+    get_emotion_stats.clear()
 
+@st.cache_data(ttl=30)  # 30초 캐싱
 def load_history():
-    """과거 상담 기록 조회"""
+    """과거 상담 기록 조회 (캐싱)"""
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT user_input, ai_response, emotion_score, risk_level, tags, timestamp FROM chats ORDER BY id DESC LIMIT 50")
@@ -293,8 +301,9 @@ def load_history():
     conn.close()
     return rows
 
+@st.cache_data(ttl=30)  # 30초 캐싱
 def get_emotion_stats():
-    """감정 통계"""
+    """감정 통계 (캐싱)"""
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT emotion_score, timestamp FROM chats WHERE emotion_score IS NOT NULL ORDER BY timestamp")
@@ -312,9 +321,13 @@ def save_portfolio_stock(ticker, stock_name, buy_price, quantity):
     """, (ticker, stock_name, buy_price, quantity))
     conn.commit()
     conn.close()
+    
+    # 캐시 무효화
+    load_portfolio_from_db.clear()
 
+@st.cache_data(ttl=60)  # 1분 캐싱
 def load_portfolio_from_db():
-    """DB에서 포트폴리오 로드"""
+    """DB에서 포트폴리오 로드 (캐싱)"""
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("SELECT ticker, stock_name, buy_price, quantity FROM portfolio")
@@ -338,6 +351,9 @@ def delete_portfolio_stock(ticker):
     cur.execute("DELETE FROM portfolio WHERE ticker = ?", (ticker,))
     conn.commit()
     conn.close()
+    
+    # 캐시 무효화
+    load_portfolio_from_db.clear()
 
 create_tables()
 
@@ -809,7 +825,14 @@ with tab4:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v3.3 - 텍스트 권위 강화!**
+    **GINI Guardian v3.3 - 텍스트 권위 강화! (최적화)**
+    
+    ⚡ 최적화:
+       - DB 연결 캐싱
+       - 주가 데이터 5분 캐싱
+       - 상담 기록 30초 캐싱
+       - 포트폴리오 1분 캐싱
+       - 렉 대폭 감소!
     
     🆕 v3.3 변경사항:
        - 음성 기능 제거 → 명확한 텍스트 중심
