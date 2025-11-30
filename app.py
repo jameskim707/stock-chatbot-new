@@ -21,6 +21,199 @@ import os
 from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
+# 라이라 CSS 테마 - app.py에 추가할 코드
+# st.set_page_config() 바로 아래, PWA 헤더 전에 추가하세요
+
+st.markdown("""
+<style>
+/* ------------------------------- */
+/* 🌙 Global Dark Theme */
+/* ------------------------------- */
+.stApp {
+    background-color: #0E0C22;
+    color: #E8E5FF;
+    font-family: "Pretendard", "Inter", sans-serif;
+}
+
+/* ------------------------------- */
+/* 🎨 Brand Colors */
+/* ------------------------------- */
+:root {
+    --pastel-violet: #CABDFF;
+    --pastel-violet-light: #D7CEFF;
+    --lavender-blue: #B8C7FF;
+    --glass-white: rgba(255,255,255,0.08);
+    --glass-border: rgba(255,255,255,0.12);
+    --text-main: #EDEAFF;
+    --text-sub: #C5C0E6;
+    --highlight-pink: #FFD1F3;
+}
+
+/* ------------------------------- */
+/* 🛡️ Logo + Title */
+/* ------------------------------- */
+.header-animated {
+    color: #0B3D91 !important;
+    font-size: 2.3rem !important;
+    font-weight: 700 !important;
+    text-align: center;
+}
+
+/* "FINAL! 라이라 최종 수정 완료" 배너 */
+.final-tag {
+    color: var(--highlight-pink) !important;
+    text-shadow: 0 0 8px rgba(255,180,255,0.45);
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+/* ------------------------------- */
+/* 🌈 Main Gradient Banner */
+/* ------------------------------- */
+.intro-banner {
+    background: linear-gradient(90deg, var(--pastel-violet), var(--lavender-blue)) !important;
+    padding: 26px !important;
+    border-radius: 18px !important;
+    border: 1px solid var(--glass-border) !important;
+    box-shadow: 0 0 25px rgba(150,140,255,0.15) !important;
+    backdrop-filter: blur(6px);
+}
+
+.intro-banner h2,
+.intro-banner p {
+    color: var(--text-main) !important;
+}
+
+/* ------------------------------- */
+/* 📦 Section Boxes (Glass UI) */
+/* ------------------------------- */
+.stExpander {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important;
+    backdrop-filter: blur(4px);
+}
+
+.streamlit-expanderHeader {
+    background: rgba(255,255,255,0.04) !important;
+    color: var(--pastel-violet-light) !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+}
+
+/* ------------------------------- */
+/* 🟣 Buttons */
+/* ------------------------------- */
+.stButton > button {
+    background: linear-gradient(90deg, var(--pastel-violet), var(--lavender-blue)) !important;
+    color: #1A1535 !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    padding: 12px 18px !important;
+    border: none !important;
+    box-shadow: 0 0 12px rgba(180,160,255,0.25) !important;
+}
+
+.stButton > button:hover {
+    filter: brightness(1.08) !important;
+}
+
+/* ------------------------------- */
+/* 🧭 Navigation Tabs */
+/* ------------------------------- */
+.stTabs [data-baseweb="tab"] {
+    color: var(--pastel-violet-light) !important;
+    opacity: 0.9;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    opacity: 1;
+    color: white !important;
+}
+
+.stTabs [aria-selected="true"] {
+    color: white !important;
+    border-bottom-color: var(--pastel-violet) !important;
+}
+
+/* ------------------------------- */
+/* 📊 Input Fields */
+/* ------------------------------- */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    color: var(--text-main) !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+}
+
+.stTextInput > div > div > input::placeholder,
+.stTextArea > div > div > textarea::placeholder {
+    color: var(--text-sub) !important;
+}
+
+/* ------------------------------- */
+/* 📈 Charts & Metrics */
+/* ------------------------------- */
+.stMetric {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+}
+
+.stMetric label {
+    color: var(--text-sub) !important;
+}
+
+.stMetric [data-testid="stMetricValue"] {
+    color: var(--pastel-violet-light) !important;
+}
+
+/* ------------------------------- */
+/* 🔻 Dividers */
+/* ------------------------------- */
+hr {
+    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+    margin: 20px 0 !important;
+}
+
+/* ------------------------------- */
+/* 💬 Chat Messages */
+/* ------------------------------- */
+.stChatMessage {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+}
+
+/* ------------------------------- */
+/* 📱 Sidebar */
+/* ------------------------------- */
+[data-testid="stSidebar"] {
+    background-color: #0A0818 !important;
+}
+
+[data-testid="stSidebar"] .stMarkdown {
+    color: var(--text-main) !important;
+}
+
+/* ------------------------------- */
+/* 🎯 Selectbox & Dropdown */
+/* ------------------------------- */
+.stSelectbox > div > div {
+    background: rgba(255,255,255,0.08) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 10px !important;
+    color: var(--text-main) !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+
 # ============================================================================
 # 📱 PWA 설정
 # ============================================================================
@@ -2221,4 +2414,5 @@ with tab5:
     """)
 
 st.divider()
+
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
