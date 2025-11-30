@@ -21,190 +21,58 @@ import os
 from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
-# ============================================================================
-# 🎨 강력한 배경색 CSS - app.py CSS 부분 교체
-# ============================================================================
-
-st.markdown("""
 <style>
-/* ------------------------------- */
-/* 🌙 강력한 배경색 적용 */
-/* ------------------------------- */
-body,
-.stApp,
-[data-testid="stAppViewContainer"],
-.main,
-[data-testid="stApp"],
-section[data-testid="stAppViewContainer"] > .main {
-    background-color: #1A1625 !important;
-}
-
-/* 메인 컨테이너 */
-.block-container {
-    background-color: transparent !important;
-}
-
-/* 사이드바 */
-[data-testid="stSidebar"],
-[data-testid="stSidebarNav"],
-section[data-testid="stSidebar"] > div {
-    background-color: #13111A !important;
-}
-
-/* 헤더 */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-}
-
-/* ------------------------------- */
-/* 🎨 Brand Colors */
-/* ------------------------------- */
-:root {
-    --soft-lavender: #A78BFA;
-    --pastel-violet: #C4B5FD;
-    --glass-border: rgba(255,255,255,0.12);
-    --headline: #EDEAFF;
-    --body-text: #D8D3E8;
-    --sub-text: #B5ADC7;
-}
-
-/* ------------------------------- */
-/* 📝 텍스트 컬러 */
-/* ------------------------------- */
+/* --- 전체 배경을 밝은 민트톤으로 --- */
 .stApp {
-    color: #EDEAFF !important;
-    font-family: "Pretendard", "Inter", sans-serif;
+    background-color: #E8FCF7 !important;
 }
 
-h1, h2, h3, h4, h5, h6 {
-    color: var(--headline) !important;
-    text-shadow: 
-        0 0 8px rgba(167,139,250,0.4),
-        0 0 14px rgba(167,139,250,0.25);
+/* --- 사이드바 배경색 (약간 짙은 민트톤) --- */
+.css-1d391kg, .css-1lcbmhc, .css-1cypcdb {
+    background-color: #D6F7EE !important;
 }
 
-p, div, span, .stMarkdown {
-    color: var(--body-text) !important;
-}
-
-.stCaption {
-    color: var(--sub-text) !important;
-}
-
-/* ------------------------------- */
-/* 🌈 메인 박스 그라데이션 */
-/* ------------------------------- */
-.intro-banner,
-.main-banner {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-    padding: 26px !important;
-    border-radius: 18px !important;
-    border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 0 25px rgba(167,139,250,0.2) !important;
-    backdrop-filter: blur(6px);
-}
-
-/* ------------------------------- */
-/* 🟣 Buttons */
-/* ------------------------------- */
-.stButton > button {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-    color: #1A1535 !important;
-    font-weight: 600 !important;
-    border-radius: 12px !important;
-    padding: 12px 18px !important;
-    border: none !important;
-    box-shadow: 
-        0 0 12px rgba(167,139,250,0.35),
-        0 4px 8px rgba(167,139,250,0.2) !important;
-}
-
-.stButton > button:hover {
-    filter: brightness(1.12) !important;
-}
-
-/* ------------------------------- */
-/* 📊 Input Fields */
-/* ------------------------------- */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stNumberInput > div > div > input {
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid var(--glass-border) !important;
-    color: var(--headline) !important;
-    border-radius: 10px !important;
-    padding: 12px !important;
-}
-
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
-    border-color: var(--soft-lavender) !important;
-    box-shadow: 0 0 8px rgba(167,139,250,0.3) !important;
-}
-
-/* ------------------------------- */
-/* 🧭 Tabs */
-/* ------------------------------- */
-.stTabs [data-baseweb="tab"] {
-    background: rgba(255,255,255,0.05);
-    color: var(--body-text) !important;
-    border-radius: 8px;
-}
-
-.stTabs [aria-selected="true"] {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-    color: #1A1535 !important;
-    font-weight: 600;
-}
-
-/* ------------------------------- */
-/* 📦 Expander */
-/* ------------------------------- */
-.stExpander {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 16px !important;
-}
-
-.streamlit-expanderHeader {
-    background: rgba(167,139,250,0.08) !important;
-    color: var(--headline) !important;
-}
-
-/* ------------------------------- */
-/* 📈 Metrics */
-/* ------------------------------- */
-.stMetric {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 12px !important;
-}
-
-.stMetric [data-testid="stMetricValue"] {
-    color: var(--soft-lavender) !important;
-}
-
-/* ------------------------------- */
-/* 🔻 Divider */
-/* ------------------------------- */
-hr {
-    border: none !important;
-    border-bottom: 1px solid rgba(167,139,250,0.15) !important;
-}
-
-/* ------------------------------- */
-/* 🌟 Header Title */
-/* ------------------------------- */
-.header-animated {
-    color: var(--headline) !important;
-    font-size: 2.3rem !important;
+/* --- 타이틀 글자색 --- */
+h1, h2, h3, h4 {
+    color: #00A8CC !important;
     font-weight: 700 !important;
-    text-shadow: 
-        0 0 12px rgba(167,139,250,0.5),
-        0 0 20px rgba(167,139,250,0.3);
+}
+
+/* --- 일반 텍스트 --- */
+.stMarkdown p, label, span, div, .stTextInput {
+    color: #1A1A1A !important;
+}
+
+/* --- 입력창 디자인 --- */
+.stTextInput input {
+    background-color: white !important;
+    border: 1px solid #AEE6DF !important;
+    border-radius: 10px !important;
+    padding: 8px !important;
+}
+
+/* --- 버튼 스타일 --- */
+.stButton>button {
+    background-color: #00A8CC !important;
+    color: white !important;
+    border-radius: 12px !important;
+    padding: 10px 18px !important;
+    border: none !important;
+    font-weight: 600 !important;
+}
+.stButton>button:hover {
+    background-color: #0095B5 !important;
+}
+
+/* --- 챗박스 컨테이너 --- */
+.chat-container {
+    background-color: white;
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.05);
 }
 </style>
-""", unsafe_allow_html=True)
+
 
 
 # ============================================================================
@@ -2409,5 +2277,6 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
+
 
 
