@@ -854,7 +854,7 @@ def get_user_memory():
             "rate": round(stopped / total * 100, 1) if total > 0 else 0
         }
     
-    .close()
+    conn.close()  
     return memory
 
 # ============================================================================
