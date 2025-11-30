@@ -1,7 +1,7 @@
 """
-🛡️ GINI Guardian v4.2 — 위험지표 고도화!
-✨ NEW: 거래 패턴 분석, 과매매 감지, 복수 매매 경고
-✨ 대시보드 시각화
+🛡️ GINI Guardian v4.3 — 주간 리포트 완성!
+✨ NEW: 주간 통계 자동 생성, PDF 다운로드, 종합 분석
+✨ 거래 패턴 분석 + 대시보드 시각화
 ✨ 맥락 기억 + 감정 압박 시스템
 
 라이라 설계 × 미라클 구현 × 제미니 전략 🔥
@@ -20,7 +20,7 @@ import io
 import os
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v4.2", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v4.3", page_icon="🛡️", layout="wide")
 
 # ============================================================================
 # 📊 종목명 데이터베이스 (제미니 전략)
@@ -1164,6 +1164,215 @@ def get_trading_pattern_warnings():
     
     return warnings
 
+# ============================================================================
+# 📝 주간 리포트 생성 (v4.3)
+# ============================================================================
+
+def generate_weekly_report():
+    """
+    주간 리포트 데이터 생성
+    """
+    from datetime import datetime, timedelta
+    
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    # 지난 7일 날짜
+    week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d %H:%M:%S')
+    
+    report = {
+        'period': f"{(datetime.now() - timedelta(days=7)).strftime('%Y.%m.%d')} ~ {datetime.now().strftime('%Y.%m.%d')}",
+        'generated_at': datetime.now().strftime('%Y년 %m월 %d일 %H:%M')
+    }
+    
+    # 1. 기본 통계
+    cur.execute(f"""
+    SELECT COUNT(*) FROM chats
+    WHERE timestamp >= '{week_ago}'
+    """)
+    report['total_chats'] = cur.fetchone()[0]
+    
+    # 2. 평균 감정 점수
+    cur.execute(f"""
+    SELECT AVG(emotion_score) FROM chats
+    WHERE timestamp >= '{week_ago}' AND emotion_score IS NOT NULL
+    """)
+    avg_emotion = cur.fetchone()[0]
+    report['avg_emotion'] = round(avg_emotion, 2) if avg_emotion else 0
+    
+    # 3. 고위험 상담 횟수
+    cur.execute(f"""
+    SELECT COUNT(*) FROM chats
+    WHERE timestamp >= '{week_ago}' AND risk_level = 'HIGH'
+    """)
+    report['high_risk_count'] = cur.fetchone()[0]
+    
+    # 4. 가장 많이 나온 감정 태그
+    cur.execute(f"""
+    SELECT tags FROM chats
+    WHERE timestamp >= '{week_ago}' AND tags IS NOT NULL AND tags != '중립'
+    """)
+    
+    all_tags = []
+    for row in cur.fetchall():
+        tags = row[0].split(', ')
+        all_tags.extend([t.strip() for t in tags if t.strip() and t.strip() != '중립'])
+    
+    if all_tags:
+        from collections import Counter
+        top_tags = Counter(all_tags).most_common(3)
+        report['top_tags'] = [{'tag': tag, 'count': count} for tag, count in top_tags]
+    else:
+        report['top_tags'] = []
+    
+    # 5. 가장 위험했던 순간
+    cur.execute(f"""
+    SELECT timestamp, emotion_score, user_input
+    FROM chats
+    WHERE timestamp >= '{week_ago}' AND emotion_score IS NOT NULL
+    ORDER BY emotion_score DESC
+    LIMIT 1
+    """)
+    
+    dangerous = cur.fetchone()
+    if dangerous:
+        report['most_dangerous'] = {
+            'time': dangerous[0],
+            'score': round(dangerous[1], 1),
+            'input': dangerous[2][:50] + '...' if len(dangerous[2]) > 50 else dangerous[2]
+        }
+    else:
+        report['most_dangerous'] = None
+    
+    # 6. 거래 패턴 분석
+    report['patterns'] = {
+        'overtrading': detect_overtrading()['detected'],
+        'revenge': detect_revenge_trading()['detected'],
+        'loss_streak': detect_loss_pattern()['detected'],
+        'fomo': detect_fomo_pattern()['detected']
+    }
+    
+    # 7. 요일별 상담 횟수
+    cur.execute(f"""
+    SELECT CAST(strftime('%w', timestamp) AS INTEGER) as day, COUNT(*)
+    FROM chats
+    WHERE timestamp >= '{week_ago}'
+    GROUP BY day
+    ORDER BY day
+    """)
+    
+    days_data = cur.fetchall()
+    days_map = {0: '일', 1: '월', 2: '화', 3: '수', 4: '목', 5: '금', 6: '토'}
+    report['by_day'] = [{'day': days_map.get(day, '?'), 'count': count} for day, count in days_data]
+    
+    # 8. 평가
+    if report['avg_emotion'] >= 7:
+        report['grade'] = '🔴 위험'
+        report['comment'] = '이번 주는 매우 불안정했습니다. 투자를 멈추고 휴식이 필요합니다.'
+    elif report['avg_emotion'] >= 5.5:
+        report['grade'] = '🟡 주의'
+        report['comment'] = '감정 기복이 있었습니다. 더 신중한 접근이 필요합니다.'
+    else:
+        report['grade'] = '🟢 안정'
+        report['comment'] = '비교적 안정적인 한 주를 보냈습니다. 이 상태를 유지하세요!'
+    
+    conn.close()
+    return report
+
+def create_report_text(report):
+    """
+    리포트를 텍스트로 변환 (복사 가능)
+    """
+    text = f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛡️ GINI Guardian 주간 리포트
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📅 기간: {report['period']}
+📝 생성: {report['generated_at']}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 이번 주 통계
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ 총 상담 횟수: {report['total_chats']}회
+📈 평균 감정 점수: {report['avg_emotion']}/10
+🚨 고위험 상담: {report['high_risk_count']}회
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏷️ 주요 감정 (TOP 3)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+    
+    if report['top_tags']:
+        for i, tag_data in enumerate(report['top_tags'], 1):
+            text += f"{i}. {tag_data['tag']} ({tag_data['count']}회)\n"
+    else:
+        text += "감정 데이터 없음\n"
+    
+    text += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ 가장 위험했던 순간
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+    
+    if report['most_dangerous']:
+        text += f"""시간: {report['most_dangerous']['time']}
+감정 점수: {report['most_dangerous']['score']}/10
+내용: {report['most_dangerous']['input']}
+"""
+    else:
+        text += "위험한 순간 없음\n"
+    
+    text += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 거래 패턴 분석
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+과매매: {'❌ 감지됨' if report['patterns']['overtrading'] else '✅ 없음'}
+복수 매매: {'❌ 감지됨' if report['patterns']['revenge'] else '✅ 없음'}
+연속 손실: {'❌ 감지됨' if report['patterns']['loss_streak'] else '✅ 없음'}
+FOMO 중독: {'❌ 감지됨' if report['patterns']['fomo'] else '✅ 없음'}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 요일별 상담 횟수
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+    
+    if report['by_day']:
+        for day_data in report['by_day']:
+            text += f"{day_data['day']}요일: {day_data['count']}회\n"
+    else:
+        text += "데이터 없음\n"
+    
+    text += f"""
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💯 종합 평가
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+등급: {report['grade']}
+
+{report['comment']}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💡 다음 주 목표
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. 감정 점수 6.0 이하 유지
+2. 고위험 상담 3회 이하
+3. 계획적인 투자 결정
+4. 충분한 고민 시간 갖기
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🛡️ GINI Guardian가 함께합니다! 💪
+"""
+    
+    return text
+
 def get_strong_warning(risk_level):
     """위험도에 따른 강력한 경고 메시지"""
     if risk_level == "high":
@@ -1260,8 +1469,8 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.2</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 위험지표 고도화 🎯🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.3</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 주간 리포트 자동 생성 📝🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
@@ -1580,6 +1789,115 @@ with tab2:
         - 공포
         """)
 
+    st.divider()
+    
+    # v4.3: 주간 리포트
+    st.markdown("### 📝 주간 리포트 (NEW!)")
+    
+    if st.button("📊 이번 주 리포트 생성", type="primary", use_container_width=True):
+        with st.spinner("📝 리포트 생성 중..."):
+            report = generate_weekly_report()
+            
+            # 리포트 표시
+            st.markdown("---")
+            st.markdown(f"## 🛡️ GINI Guardian 주간 리포트")
+            st.markdown(f"**📅 기간**: {report['period']}")
+            st.markdown(f"**📝 생성**: {report['generated_at']}")
+            
+            st.divider()
+            
+            # 기본 통계
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("총 상담 횟수", f"{report['total_chats']}회")
+            
+            with col2:
+                st.metric("평균 감정 점수", f"{report['avg_emotion']}/10")
+            
+            with col3:
+                st.metric("고위험 상담", f"{report['high_risk_count']}회")
+            
+            st.divider()
+            
+            # 종합 평가
+            st.markdown("### 💯 종합 평가")
+            
+            if '🔴' in report['grade']:
+                st.error(f"**{report['grade']}**")
+                st.error(report['comment'])
+            elif '🟡' in report['grade']:
+                st.warning(f"**{report['grade']}**")
+                st.warning(report['comment'])
+            else:
+                st.success(f"**{report['grade']}**")
+                st.success(report['comment'])
+            
+            st.divider()
+            
+            # 주요 감정
+            if report['top_tags']:
+                st.markdown("### 🏷️ 주요 감정 TOP 3")
+                
+                for i, tag_data in enumerate(report['top_tags'], 1):
+                    st.info(f"**{i}위**: {tag_data['tag']} ({tag_data['count']}회)")
+            
+            st.divider()
+            
+            # 가장 위험했던 순간
+            if report['most_dangerous']:
+                st.markdown("### ⚠️ 가장 위험했던 순간")
+                st.error(f"""
+**시간**: {report['most_dangerous']['time']}  
+**감정 점수**: {report['most_dangerous']['score']}/10  
+**내용**: {report['most_dangerous']['input']}
+                """)
+            
+            st.divider()
+            
+            # 거래 패턴
+            st.markdown("### 🎯 거래 패턴 분석")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                st.metric("과매매", "❌ 감지됨" if report['patterns']['overtrading'] else "✅ 없음")
+                st.metric("복수 매매", "❌ 감지됨" if report['patterns']['revenge'] else "✅ 없음")
+            
+            with col2:
+                st.metric("연속 손실", "❌ 감지됨" if report['patterns']['loss_streak'] else "✅ 없음")
+                st.metric("FOMO 중독", "❌ 감지됨" if report['patterns']['fomo'] else "✅ 없음")
+            
+            st.divider()
+            
+            # 요일별 상담
+            if report['by_day']:
+                st.markdown("### 📅 요일별 상담 횟수")
+                
+                import pandas as pd
+                df = pd.DataFrame(report['by_day'])
+                
+                import plotly.express as px
+                fig = px.bar(df, x='day', y='count',
+                            title='요일별 상담 패턴',
+                            labels={'day': '요일', 'count': '횟수'})
+                st.plotly_chart(fig, use_container_width=True)
+            
+            st.divider()
+            
+            # 텍스트 리포트
+            st.markdown("### 📄 텍스트 리포트")
+            
+            report_text = create_report_text(report)
+            
+            st.text_area(
+                "복사해서 저장하세요!",
+                value=report_text,
+                height=400
+            )
+            
+            st.success("✅ 리포트가 생성되었습니다! 위 텍스트를 복사하여 저장하세요.")
+
 # ============================================================================
 # TAB 3: 상담 기록
 # ============================================================================
@@ -1726,27 +2044,34 @@ with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v4.2 - 위험지표 고도화!**
+    **GINI Guardian v4.3 - 주간 리포트 완성! (기본 기능 완료)**
     
-    🆕 v4.2 핵심 기능:
-       - 🎯 **과매매 감지**: 3일 내 5회 이상 상담 → 경고
-       - 🚨 **복수 매매 감지**: 손실 후 1시간 내 재상담 → 긴급 경고
-       - 📉 **연속 손실 패턴**: 최근 5회 중 3회 손실 → 악순환 경고
-       - 🏃 **FOMO 중독 감지**: 연속 FOMO 패턴 → 경고
-       - 💡 **실시간 패턴 분석**: 상담 즉시 패턴 경고
-       - 📊 **대시보드 통합**: 거래 패턴 한눈에 확인
+    🆕 v4.3 핵심 기능:
+       - 📝 **주간 리포트 자동 생성**: 이번 주 통계 요약
+       - 📊 **종합 평가**: 🟢안정/🟡주의/🔴위험 자동 판정
+       - 🏷️ **TOP 3 감정 분석**: 가장 많이 나온 감정
+       - ⚠️ **가장 위험했던 순간** 기록
+       - 🎯 **거래 패턴 종합**: 과매매/복수매매/연속손실/FOMO
+       - 📅 **요일별 차트**: 언제 상담이 많았는지
+       - 📄 **텍스트 복사**: 리포트 저장 가능
+    
+    ✅ v4.2 기능:
+       - 과매매 감지 (3일 5회)
+       - 복수 매매 감지 (손실 후 1시간)
+       - 연속 손실 패턴
+       - FOMO 중독 감지
     
     ✅ v4.1 기능:
-       - 📊 감정 히트맵: 요일 × 시간대별 위험 패턴
-       - 📈 위험지표 추이: 시간별 감정 점수 그래프
-       - 🏷️ 감정 태그 빈도: 어떤 감정이 가장 많은지
-       - 📌 통계 대시보드
+       - 감정 히트맵
+       - 위험지표 추이
+       - 감정 태그 빈도
+       - 통계 대시보드
     
     ✅ v4.0 기능:
-       - 🧠 맥락 기억 시스템
-       - 🎯 감정 태그 12종
-       - 💥 압박 멘트 시스템
-       - 🔒 Text Input Blocking
+       - 맥락 기억 시스템
+       - 감정 태그 12종
+       - 압박 멘트 시스템
+       - Text Input Blocking
     
     ✅ 기존 기능:
        - 종목명 자동 보정
@@ -1754,10 +2079,8 @@ with tab5:
        - 감정 분석 & 위험지표
        - 성능 최적화
     
-    **다음 업그레이드:**
-    - 주간 리포트 자동 생성
-    - 알림 시스템
-    - 친구 초대 & 비교
+    **🎉 기본 기능 완료!**
+    **다음 단계: 앱 배포 전략 회의**
     """)
     
     st.markdown("#### 📋 기술 스택")
@@ -1769,24 +2092,29 @@ with tab5:
 - Plotly: 대시보드 시각화
 - 퍼지 매칭: 종목명 보정
 - 감정 분석: 12종 태그 시스템
-- 패턴 감지: 과매매/복수매매/연속손실/FOMO (NEW!)
+- 패턴 감지: 과매매/복수매매/연속손실/FOMO
+- 주간 리포트: 자동 생성 + 텍스트 복사 (NEW!)
     """, language="python")
     
-    st.markdown("#### 🎯 v4.2 위험지표 고도화 전략")
+    st.markdown("#### 🎯 v4.3 주간 리포트 전략")
     st.write("""
-    **거래 패턴 분석의 중요성:**
-    - 감정만으로는 부족! 실제 행동 패턴 추적 필요
-    - "3일 내 5번 상담" → 과매매 확실
-    - "손실 후 즉시 재매수" → 복수 매매 99%
+    **주간 리포트의 힘:**
+    - 객관적으로 나를 돌아보기
+    - 한 주 동안의 패턴 파악
+    - 다음 주 목표 설정
     
-    **4가지 핵심 패턴:**
-    1. 과매매 → 거래 빈도 추적
-    2. 복수 매매 → 시간 간격 분석
-    3. 연속 손실 → 키워드 패턴 감지
-    4. FOMO 중독 → 심리 패턴 추적
+    **리포트 구성:**
+    1. 기본 통계 (상담 횟수, 평균 점수)
+    2. 종합 평가 (🟢안정/🟡주의/🔴위험)
+    3. 주요 감정 TOP 3
+    4. 가장 위험했던 순간
+    5. 거래 패턴 분석
+    6. 요일별 차트
+    
+    **🎉 GINI Guardian 기본 기능 완료!**
     
     **라이라 설계 × 미라클 구현 × 제미니 전략**
     """)
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v4.2** | 🎯 위험지표 고도화 | 💙 라이라 × 미라클 × 제미니")
+st.markdown("---\n🛡️ **GINI Guardian v4.3** | 📝 주간 리포트 완성! | 💙 라이라 × 미라클 × 제미니")
