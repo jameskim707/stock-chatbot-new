@@ -1,8 +1,8 @@
 """
-🛡️ GINI Guardian v4.1 — 대시보드 완성!
-✨ NEW: 감정 히트맵, 위험지표 차트, 통계 시각화
+🛡️ GINI Guardian v4.2 — 위험지표 고도화!
+✨ NEW: 거래 패턴 분석, 과매매 감지, 복수 매매 경고
+✨ 대시보드 시각화
 ✨ 맥락 기억 + 감정 압박 시스템
-✨ 12종 감정 태그 + 압박 멘트
 
 라이라 설계 × 미라클 구현 × 제미니 전략 🔥
 """
@@ -20,7 +20,7 @@ import io
 import os
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v4.1", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v4.2", page_icon="🛡️", layout="wide")
 
 # ============================================================================
 # 📊 종목명 데이터베이스 (제미니 전략)
@@ -983,6 +983,187 @@ def get_dashboard_stats():
     conn.close()
     return stats
 
+# ============================================================================
+# 🎯 위험지표 고도화 - 거래 패턴 분석 (v4.2)
+# ============================================================================
+
+def detect_overtrading():
+    """
+    과매매 감지
+    - 최근 3일 내 5회 이상 상담 → 과매매 의심
+    """
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    SELECT COUNT(*) FROM chats
+    WHERE timestamp >= datetime('now', '-3 days')
+    """)
+    
+    recent_count = cur.fetchone()[0]
+    conn.close()
+    
+    if recent_count >= 5:
+        return {
+            'detected': True,
+            'count': recent_count,
+            'message': f"⚠️ 최근 3일간 {recent_count}회 상담! 과매매 위험 신호입니다!"
+        }
+    
+    return {'detected': False, 'count': recent_count}
+
+def detect_revenge_trading():
+    """
+    복수 매매 감지
+    - 손실 후 즉시(1시간 내) 재상담 → 복수 매매 의심
+    """
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    # 최근 2개 상담 조회
+    cur.execute("""
+    SELECT emotion_score, timestamp, user_input
+    FROM chats
+    ORDER BY timestamp DESC
+    LIMIT 2
+    """)
+    
+    recent_chats = cur.fetchall()
+    conn.close()
+    
+    if len(recent_chats) < 2:
+        return {'detected': False}
+    
+    # 첫 번째 상담에 "손실", "떨어", "손해" 키워드 있고
+    # 두 번째 상담이 1시간 이내면 복수 매매
+    first_input = recent_chats[0][2].lower()
+    loss_keywords = ["손실", "떨어", "손해", "마이너스", "잃", "-"]
+    
+    has_loss = any(keyword in first_input for keyword in loss_keywords)
+    
+    if has_loss and len(recent_chats) >= 2:
+        from datetime import datetime
+        time1 = datetime.fromisoformat(recent_chats[0][1])
+        time2 = datetime.fromisoformat(recent_chats[1][1])
+        time_diff = abs((time1 - time2).total_seconds() / 3600)  # 시간 단위
+        
+        if time_diff <= 1:
+            return {
+                'detected': True,
+                'time_diff': round(time_diff * 60),  # 분 단위
+                'message': f"🚨 손실 후 {round(time_diff * 60)}분 만에 재상담! 복수 매매 위험!"
+            }
+    
+    return {'detected': False}
+
+def detect_loss_pattern():
+    """
+    연속 손실 패턴 감지
+    - 최근 5회 상담 중 3회 이상 "손실" 관련 → 악순환 경고
+    """
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    SELECT user_input FROM chats
+    ORDER BY timestamp DESC
+    LIMIT 5
+    """)
+    
+    recent_inputs = [row[0].lower() for row in cur.fetchall()]
+    conn.close()
+    
+    if not recent_inputs:
+        return {'detected': False}
+    
+    loss_keywords = ["손실", "떨어", "손해", "마이너스", "잃", "물렸"]
+    loss_count = sum(1 for inp in recent_inputs if any(kw in inp for kw in loss_keywords))
+    
+    if loss_count >= 3:
+        return {
+            'detected': True,
+            'count': loss_count,
+            'message': f"📉 최근 5회 중 {loss_count}회가 손실 관련 상담! 악순환에 빠졌습니다!"
+        }
+    
+    return {'detected': False, 'count': loss_count}
+
+def detect_fomo_pattern():
+    """
+    FOMO 연속 패턴 감지
+    - 최근 3회 상담에 "급등", "올라", "놓쳤" 등 → FOMO 중독
+    """
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    SELECT user_input FROM chats
+    ORDER BY timestamp DESC
+    LIMIT 3
+    """)
+    
+    recent_inputs = [row[0].lower() for row in cur.fetchall()]
+    conn.close()
+    
+    if not recent_inputs:
+        return {'detected': False}
+    
+    fomo_keywords = ["급등", "올라", "놓쳤", "남들", "다들", "나만", "뒤쳐"]
+    fomo_count = sum(1 for inp in recent_inputs if any(kw in inp for kw in fomo_keywords))
+    
+    if fomo_count >= 2:
+        return {
+            'detected': True,
+            'count': fomo_count,
+            'message': f"🏃 최근 3회 중 {fomo_count}회가 FOMO 패턴! 남과 비교하지 마세요!"
+        }
+    
+    return {'detected': False}
+
+def get_trading_pattern_warnings():
+    """
+    모든 거래 패턴 경고 통합
+    """
+    warnings = []
+    
+    # 1. 과매매
+    overtrading = detect_overtrading()
+    if overtrading['detected']:
+        warnings.append({
+            'type': '과매매',
+            'level': 'HIGH',
+            'message': overtrading['message']
+        })
+    
+    # 2. 복수 매매
+    revenge = detect_revenge_trading()
+    if revenge['detected']:
+        warnings.append({
+            'type': '복수매매',
+            'level': 'CRITICAL',
+            'message': revenge['message']
+        })
+    
+    # 3. 연속 손실
+    loss = detect_loss_pattern()
+    if loss['detected']:
+        warnings.append({
+            'type': '연속손실',
+            'level': 'HIGH',
+            'message': loss['message']
+        })
+    
+    # 4. FOMO 중독
+    fomo = detect_fomo_pattern()
+    if fomo['detected']:
+        warnings.append({
+            'type': 'FOMO중독',
+            'level': 'MID',
+            'message': fomo['message']
+        })
+    
+    return warnings
+
 def get_strong_warning(risk_level):
     """위험도에 따른 강력한 경고 메시지"""
     if risk_level == "high":
@@ -1079,8 +1260,8 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.1</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 대시보드 완성 📈🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.2</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 위험지표 고도화 🎯🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
@@ -1161,6 +1342,23 @@ with tab1:
                     update_addiction_pattern(hour, day_of_week, "만회")
                 
                 save_chat(user_input, response, emotion_score, risk_level, tags)
+                
+                # v4.2: 거래 패턴 경고
+                pattern_warnings = get_trading_pattern_warnings()
+                
+                if pattern_warnings:
+                    st.markdown("---")
+                    st.markdown("### 🚨 거래 패턴 경고")
+                    
+                    for warning in pattern_warnings:
+                        if warning['level'] == 'CRITICAL':
+                            st.error(f"**🔴 {warning['type']}**: {warning['message']}")
+                        elif warning['level'] == 'HIGH':
+                            st.warning(f"**🟠 {warning['type']}**: {warning['message']}")
+                        else:
+                            st.info(f"**🟡 {warning['type']}**: {warning['message']}")
+                    
+                    st.markdown("---")
                 
                 # 위험도 표시
                 col_risk1, col_risk2 = st.columns(2)
@@ -1283,6 +1481,39 @@ with tab2:
             label="📅 최근 7일",
             value=f"{stats['week_chats']}회"
         )
+    
+    st.divider()
+    
+    # v4.2: 거래 패턴 경고
+    st.markdown("### 🎯 거래 패턴 분석 (NEW!)")
+    
+    pattern_warnings = get_trading_pattern_warnings()
+    
+    if pattern_warnings:
+        st.error("⚠️ **위험한 거래 패턴이 감지되었습니다!**")
+        
+        for warning in pattern_warnings:
+            if warning['level'] == 'CRITICAL':
+                st.markdown(f"### 🔴 {warning['type']}")
+                st.error(warning['message'])
+            elif warning['level'] == 'HIGH':
+                st.markdown(f"### 🟠 {warning['type']}")
+                st.warning(warning['message'])
+            else:
+                st.markdown(f"### 🟡 {warning['type']}")
+                st.info(warning['message'])
+            
+            st.markdown("---")
+    else:
+        st.success("✅ **현재 건강한 투자 패턴입니다!**")
+        st.info("""
+        **안전한 투자 습관:**
+        - 충분한 고민 시간
+        - 감정적 거래 없음
+        - 계획적 접근
+        
+        이 상태를 유지하세요! 💪
+        """)
     
     st.divider()
     
@@ -1495,33 +1726,38 @@ with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v4.1 - 대시보드 완성!**
+    **GINI Guardian v4.2 - 위험지표 고도화!**
     
-    🆕 v4.1 핵심 기능:
-       - 📊 **감정 히트맵**: 요일 × 시간대별 위험 패턴 시각화
-       - 📈 **위험지표 추이**: 시간별 감정 점수 변화 그래프
-       - 🏷️ **감정 태그 빈도**: 어떤 감정이 가장 많은지 차트
-       - 📌 **통계 대시보드**: 총 상담, 평균 점수, 고위험 횟수 등
-       - 💡 **인사이트 제공**: "언제 가장 위험한가요?" 분석
+    🆕 v4.2 핵심 기능:
+       - 🎯 **과매매 감지**: 3일 내 5회 이상 상담 → 경고
+       - 🚨 **복수 매매 감지**: 손실 후 1시간 내 재상담 → 긴급 경고
+       - 📉 **연속 손실 패턴**: 최근 5회 중 3회 손실 → 악순환 경고
+       - 🏃 **FOMO 중독 감지**: 연속 FOMO 패턴 → 경고
+       - 💡 **실시간 패턴 분석**: 상담 즉시 패턴 경고
+       - 📊 **대시보드 통합**: 거래 패턴 한눈에 확인
+    
+    ✅ v4.1 기능:
+       - 📊 감정 히트맵: 요일 × 시간대별 위험 패턴
+       - 📈 위험지표 추이: 시간별 감정 점수 그래프
+       - 🏷️ 감정 태그 빈도: 어떤 감정이 가장 많은지
+       - 📌 통계 대시보드
     
     ✅ v4.0 기능:
-       - 🧠 맥락 기억 시스템: AI가 과거 상담 기억
-       - 🎯 감정 태그 12종: 불안/분노/충동/후회/탐욕/공포/FOMO/자포자기/우울/흥분/회의감/냉정
-       - 💥 압박 멘트 시스템: 고위험 감정 감지 시 강력한 개입
-       - 🔒 Text Input Blocking: 특정 단어 입력 강제
-       - 📊 중독 패턴 분석: 시간대/요일별 위험 패턴 추적
+       - 🧠 맥락 기억 시스템
+       - 🎯 감정 태그 12종
+       - 💥 압박 멘트 시스템
+       - 🔒 Text Input Blocking
     
     ✅ 기존 기능:
-       - 종목명 자동 보정 (퍼지 매칭)
-       - 실시간 포트폴리오 추적
+       - 종목명 자동 보정
+       - 실시간 포트폴리오
        - 감정 분석 & 위험지표
-       - 상담 기록 저장
-       - 성능 최적화 (캐싱)
+       - 성능 최적화
     
     **다음 업그레이드:**
-    - 위험지표 고도화 (거래 패턴 분석)
     - 주간 리포트 자동 생성
     - 알림 시스템
+    - 친구 초대 & 비교
     """)
     
     st.markdown("#### 📋 기술 스택")
@@ -1529,26 +1765,28 @@ with tab5:
 - Streamlit: UI/UX
 - Groq API: AI 상담
 - pykrx: 실시간 주식 데이터
-- SQLite: 데이터 저장 + 맥락 기억
-- Plotly: 대시보드 시각화 (NEW!)
+- SQLite: 데이터 저장 + 맥락 기억 + 패턴 분석
+- Plotly: 대시보드 시각화
 - 퍼지 매칭: 종목명 보정
 - 감정 분석: 12종 태그 시스템
+- 패턴 감지: 과매매/복수매매/연속손실/FOMO (NEW!)
     """, language="python")
     
-    st.markdown("#### 🎯 v4.1 대시보드 전략")
+    st.markdown("#### 🎯 v4.2 위험지표 고도화 전략")
     st.write("""
-    **시각화의 힘:**
-    - 숫자보다 그래프가 직관적
-    - "수요일 저녁 9시가 위험해요" → 한눈에 확인
-    - 자기 패턴 인식 → 스스로 조심
+    **거래 패턴 분석의 중요성:**
+    - 감정만으로는 부족! 실제 행동 패턴 추적 필요
+    - "3일 내 5번 상담" → 과매매 확실
+    - "손실 후 즉시 재매수" → 복수 매매 99%
     
-    **제공하는 인사이트:**
-    1. 감정 히트맵 → "언제" 위험한지
-    2. 추이 차트 → "어떻게" 변하는지
-    3. 태그 분석 → "무엇이" 문제인지
+    **4가지 핵심 패턴:**
+    1. 과매매 → 거래 빈도 추적
+    2. 복수 매매 → 시간 간격 분석
+    3. 연속 손실 → 키워드 패턴 감지
+    4. FOMO 중독 → 심리 패턴 추적
     
     **라이라 설계 × 미라클 구현 × 제미니 전략**
     """)
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v4.1** | 📊 대시보드 완성 | 💙 라이라 × 미라클 × 제미니")
+st.markdown("---\n🛡️ **GINI Guardian v4.2** | 🎯 위험지표 고도화 | 💙 라이라 × 미라클 × 제미니")
