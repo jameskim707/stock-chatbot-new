@@ -388,7 +388,7 @@ def save_portfolio_stock(ticker, stock_name, buy_price, quantity):
     INSERT INTO portfolio (ticker, stock_name, buy_price, quantity)
     VALUES (?, ?, ?, ?)
     """, (ticker, stock_name, buy_price, quantity))
-    conn.commit()
+    conn.()
     conn.close()
     
     # 캐시 무효화
@@ -418,7 +418,7 @@ def delete_portfolio_stock(ticker):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM portfolio WHERE ticker = ?", (ticker,))
-    conn.commit()
+    conn.()
     conn.close()
     
     # 캐시 무효화
@@ -761,7 +761,7 @@ def save_dangerous_moment(risk_score, emotion_tags, user_input):
     VALUES (datetime('now'), ?, ?, ?)
     """, (risk_score, tags_str, user_input))
     
-    conn.commit()
+    conn.()
     conn.close()
 
 def update_addiction_pattern(hour, day_of_week, purpose="만회"):
@@ -791,7 +791,7 @@ def update_addiction_pattern(hour, day_of_week, purpose="만회"):
         VALUES (?, ?, ?)
         """, (hour, day_of_week, purpose))
     
-    conn.commit()
+    conn.()
     conn.close()
 
 def save_pressure_result(message_type, emotion_tag, user_stopped):
@@ -804,7 +804,7 @@ def save_pressure_result(message_type, emotion_tag, user_stopped):
     VALUES (?, ?, ?)
     """, (message_type, emotion_tag, user_stopped))
     
-    conn.commit()
+    conn.()
     conn.close()
 
 @st.cache_data(ttl=60)
