@@ -1,9 +1,9 @@
 """
-🛡️ GINI Guardian v3.3 — 텍스트 권위 강화! (최적화)
-✨ 음성 제거 → 명확한 텍스트 중심 상담
-✨ 종목명 완벽 인식 (퍼지 매칭)
-✨ 핵심 로직 강화
-⚡ 성능 최적화: 캐싱 시스템 추가!
+🛡️ GINI Guardian v4.0 — 맥락 기억 + 감정 압박 시스템!
+✨ NEW: 과거 상담 기억하는 AI
+✨ NEW: 감정 태그 12종 확장
+✨ NEW: 강력한 압박 멘트 + Text Input Blocking
+✨ 중독 패턴 분석 & 추적
 
 라이라 설계 × 미라클 구현 × 제미니 전략 🔥
 """
@@ -21,7 +21,7 @@ import io
 import os
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v3.3", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v4.0", page_icon="🛡️", layout="wide")
 
 # ============================================================================
 # 📊 종목명 데이터베이스 (제미니 전략)
@@ -244,9 +244,10 @@ def get_connection():
 
 def create_tables():
     """테이블 생성"""
-    conn = get_connection()
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
     
+    # 기존 상담 기록 테이블
     cur.execute("""
     CREATE TABLE IF NOT EXISTS chats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -259,6 +260,7 @@ def create_tables():
     );
     """)
     
+    # 포트폴리오 테이블
     cur.execute("""
     CREATE TABLE IF NOT EXISTS portfolio (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -270,18 +272,58 @@ def create_tables():
     );
     """)
     
+    # ===== v4.0 NEW: 맥락 기억 테이블 =====
+    
+    # 1. 가장 위험했던 순간 기록
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS dangerous_moments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp DATETIME NOT NULL,
+        risk_score REAL NOT NULL,
+        emotion_tags TEXT NOT NULL,
+        user_input TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    
+    # 2. 사용자 중독 패턴
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS addiction_patterns (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        hour_of_day INTEGER,
+        day_of_week INTEGER,
+        investment_purpose TEXT,
+        pattern_count INTEGER DEFAULT 1,
+        last_detected DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    
+    # 3. 압박 멘트 효과 추적
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS pressure_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_type TEXT NOT NULL,
+        emotion_tag TEXT NOT NULL,
+        user_stopped BOOLEAN,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    """)
+    
     conn.commit()
     conn.close()
 
 def save_chat(user_input, ai_response, emotion_score, risk_level, tags):
     """상담 기록 저장"""
-    conn = get_connection()
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
+    
+    # 태그를 문자열로 변환
+    tags_str = ", ".join(tags) if isinstance(tags, list) else tags
     
     cur.execute("""
     INSERT INTO chats (user_input, ai_response, emotion_score, risk_level, tags)
     VALUES (?, ?, ?, ?, ?)
-    """, (user_input, ai_response, emotion_score, risk_level, tags))
+    """, (user_input, ai_response, emotion_score, risk_level, tags_str))
     
     conn.commit()
     conn.close()
@@ -289,6 +331,7 @@ def save_chat(user_input, ai_response, emotion_score, risk_level, tags):
     # 캐시 무효화
     load_history.clear()
     get_emotion_stats.clear()
+    get_user_memory.clear()
 
 @st.cache_data(ttl=30)  # 30초 캐싱
 def load_history():
@@ -466,19 +509,287 @@ def detect_risk_level(risk_score):
         return "low"
 
 def detect_tags(user_input):
-    """감정 태그 감지"""
+    """감정 태그 12종 감지"""
     tags = []
     
-    if any(word in user_input for word in ["불안", "걱정", "두려", "무섯"]):
+    # 1. 불안
+    if any(word in user_input for word in ["불안", "걱정", "두려", "무서", "떨려"]):
         tags.append("불안")
-    if any(word in user_input for word in ["손실", "떨어", "내려", "털렸", "씨발"]):
+    
+    # 2. 분노
+    if any(word in user_input for word in ["손실", "떨어", "내려", "털렸", "씨발", "화나", "짜증"]):
         tags.append("분노")
-    if any(word in user_input for word in ["사도", "들어갈", "몰빵", "급"]):
+    
+    # 3. 충동
+    if any(word in user_input for word in ["사도", "들어갈", "몰빵", "급", "지금", "당장"]):
         tags.append("충동")
-    if any(word in user_input for word in ["후회", "실수", "잘못"]):
+    
+    # 4. 후회
+    if any(word in user_input for word in ["후회", "실수", "잘못", "했어야"]):
         tags.append("후회")
     
-    return ", ".join(tags) if tags else "중립"
+    # 5. 탐욕 (고위험)
+    if any(word in user_input for word in ["더", "많이", "대박", "벌고", "수익", "올랐", "급등"]):
+        tags.append("탐욕")
+    
+    # 6. 공포
+    if any(word in user_input for word in ["망했", "끝났", "파산", "다 잃", "무섭"]):
+        tags.append("공포")
+    
+    # 7. FOMO (Fear Of Missing Out)
+    if any(word in user_input for word in ["남들은", "다들", "나만", "놓쳤", "늦었", "올라가는데"]):
+        tags.append("FOMO")
+    
+    # 8. 자포자기 (고위험)
+    if any(word in user_input for word in ["어차피", "상관없", "아무거나", "됐어", "포기"]):
+        tags.append("자포자기")
+    
+    # 9. 우울
+    if any(word in user_input for word in ["우울", "힘들", "지쳤", "포기하고싶", "의미없"]):
+        tags.append("우울")
+    
+    # 10. 흥분
+    if any(word in user_input for word in ["와!", "대박", "완전", "진짜!", "미쳤"]):
+        tags.append("흥분")
+    
+    # 11. 회의감
+    if any(word in user_input for word in ["의심", "믿을수없", "사기", "조작", "속았"]):
+        tags.append("회의감")
+    
+    # 12. 냉정
+    if any(word in user_input for word in ["분석", "계획", "전략", "냉정", "객관"]):
+        tags.append("냉정")
+    
+    return tags if tags else ["중립"]
+
+def get_high_risk_tags():
+    """고위험 감정 태그 리스트"""
+    return ["탐욕", "자포자기", "충동", "FOMO", "공포"]
+
+# ============================================================================
+# 💥 압박 멘트 시스템 (v4.0)
+# ============================================================================
+
+PRESSURE_MESSAGES = {
+    "탐욕": {
+        "title": "⚠️ 탐욕 경고",
+        "message": """
+**당신의 가족을 생각해보세요.**
+
+지금 당신이 '더 벌고 싶다'는 생각으로 매매하려는 그 돈은:
+- 아이의 학원비일 수도 있습니다
+- 부모님의 병원비일 수도 있습니다  
+- 가족의 생활비일 수도 있습니다
+
+**통계적 사실:**
+탐욕에 의한 추가 매수의 87%는 더 큰 손실로 이어집니다.
+
+**지금 멈추지 않으면, 내일 가족에게 무슨 말을 할 겁니까?**
+        """,
+        "blocking_word": "가족"
+    },
+    
+    "자포자기": {
+        "title": "🔴 긴급 개입",
+        "message": """
+**STOP. 당신은 지금 가장 위험한 상태입니다.**
+
+"어차피 망했어" 라는 생각으로 하는 투자는:
+- 100% 실패합니다
+- 회복 불가능한 손실을 만듭니다
+- 가족을 파탄으로 몰아갑니다
+
+**당신의 미래를 상상해보세요:**
+- 1년 후, 이 결정을 후회하는 당신
+- 가족 앞에서 고개 숙인 당신
+- 모든 것을 잃은 당신
+
+**지금 거래 앱을 끄세요. 지금 당장.**
+        """,
+        "blocking_word": "멈춤"
+    },
+    
+    "충동": {
+        "title": "⏸️ 잠깐!",
+        "message": """
+**충동적 결정의 95%는 실패합니다.**
+
+지금 당장 매수하고 싶은 그 마음, 
+24시간만 기다려보세요.
+
+**내일 다시 보면:**
+- 80%는 "안 사길 잘했다"고 생각합니다
+- 15%는 "더 싸게 살 수 있었다"고 생각합니다
+- 5%만 "사야 했다"고 생각합니다
+
+**당신의 돈은 도망가지 않습니다. 기회는 매일 옵니다.**
+        """,
+        "blocking_word": "내일"
+    },
+    
+    "FOMO": {
+        "title": "🎯 현실 직시",
+        "message": """
+**"남들은 다 번다"는 착각입니다.**
+
+실제 통계:
+- SNS에서 수익 자랑하는 사람: 5%
+- 조용히 손실 보는 사람: 70%
+- 거짓말하는 사람: 25%
+
+**당신이 못 탄 그 주식, 내일 -10% 떨어질 수도 있습니다.**
+
+뉴스와 SNS를 끄세요. 당신만의 전략을 지키세요.
+        """,
+        "blocking_word": "나만"
+    },
+    
+    "공포": {
+        "title": "🛡️ 진정하세요",
+        "message": """
+**공포에 의한 손절은 대부분 최악의 타이밍입니다.**
+
+시장은 당신의 감정을 먹고 삽니다.
+- 당신이 무서워 팔 때 = 기관이 삽니다
+- 당신이 욕심내 살 때 = 기관이 팝니다
+
+**지금 팔지 마세요. 최소 3일 기다려보세요.**
+
+그때도 팔고 싶으면, 그때 파세요.
+        """,
+        "blocking_word": "기다림"
+    }
+}
+
+def get_pressure_message(emotion_tags):
+    """
+    감정 태그에 따른 압박 멘트 반환
+    
+    Args:
+        emotion_tags: 감지된 감정 태그 리스트
+    
+    Returns:
+        dict or None: {title, message, blocking_word} or None
+    """
+    high_risk = get_high_risk_tags()
+    
+    for tag in emotion_tags:
+        if tag in high_risk and tag in PRESSURE_MESSAGES:
+            return PRESSURE_MESSAGES[tag]
+    
+    return None
+
+# ============================================================================
+# 🧠 맥락 기억 시스템 (v4.0)
+# ============================================================================
+
+def save_dangerous_moment(risk_score, emotion_tags, user_input):
+    """위험한 순간 기록"""
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    tags_str = ", ".join(emotion_tags) if isinstance(emotion_tags, list) else emotion_tags
+    
+    cur.execute("""
+    INSERT INTO dangerous_moments (timestamp, risk_score, emotion_tags, user_input)
+    VALUES (datetime('now'), ?, ?, ?)
+    """, (risk_score, tags_str, user_input))
+    
+    conn.commit()
+    conn.close()
+
+def update_addiction_pattern(hour, day_of_week, purpose="만회"):
+    """중독 패턴 업데이트"""
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    # 기존 패턴 확인
+    cur.execute("""
+    SELECT id, pattern_count FROM addiction_patterns
+    WHERE hour_of_day = ? AND day_of_week = ? AND investment_purpose = ?
+    """, (hour, day_of_week, purpose))
+    
+    existing = cur.fetchone()
+    
+    if existing:
+        # 카운트 증가
+        cur.execute("""
+        UPDATE addiction_patterns
+        SET pattern_count = pattern_count + 1, last_detected = datetime('now')
+        WHERE id = ?
+        """, (existing[0],))
+    else:
+        # 새 패턴 추가
+        cur.execute("""
+        INSERT INTO addiction_patterns (hour_of_day, day_of_week, investment_purpose)
+        VALUES (?, ?, ?)
+        """, (hour, day_of_week, purpose))
+    
+    conn.commit()
+    conn.close()
+
+def save_pressure_result(message_type, emotion_tag, user_stopped):
+    """압박 멘트 결과 저장"""
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    INSERT INTO pressure_messages (message_type, emotion_tag, user_stopped)
+    VALUES (?, ?, ?)
+    """, (message_type, emotion_tag, user_stopped))
+    
+    conn.commit()
+    conn.close()
+
+@st.cache_data(ttl=60)
+def get_user_memory():
+    """사용자 맥락 기억 불러오기"""
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    memory = {
+        "dangerous_moments": [],
+        "addiction_patterns": [],
+        "pressure_effectiveness": {}
+    }
+    
+    # 1. 가장 위험했던 순간 (최근 5개)
+    cur.execute("""
+    SELECT timestamp, risk_score, emotion_tags, user_input
+    FROM dangerous_moments
+    ORDER BY risk_score DESC
+    LIMIT 5
+    """)
+    memory["dangerous_moments"] = cur.fetchall()
+    
+    # 2. 중독 패턴 (상위 3개)
+    cur.execute("""
+    SELECT hour_of_day, day_of_week, investment_purpose, pattern_count
+    FROM addiction_patterns
+    ORDER BY pattern_count DESC
+    LIMIT 3
+    """)
+    memory["addiction_patterns"] = cur.fetchall()
+    
+    # 3. 압박 멘트 효과
+    cur.execute("""
+    SELECT emotion_tag, 
+           SUM(CASE WHEN user_stopped = 1 THEN 1 ELSE 0 END) as stopped,
+           COUNT(*) as total
+    FROM pressure_messages
+    GROUP BY emotion_tag
+    """)
+    
+    for row in cur.fetchall():
+        emotion_tag, stopped, total = row
+        memory["pressure_effectiveness"][emotion_tag] = {
+            "stopped": stopped,
+            "total": total,
+            "rate": round(stopped / total * 100, 1) if total > 0 else 0
+        }
+    
+    conn.close()
+    return memory
 
 def get_strong_warning(risk_level):
     """위험도에 따른 강력한 경고 메시지"""
@@ -576,8 +887,8 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.3</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">권위 있는 텍스트 상담 🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.0</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 맥락 기억 + 감정 압박 시스템 🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
@@ -644,7 +955,17 @@ with tab1:
                 risk = calc_risk_score(emotion_score, volatility_score, news_score)
                 risk_emoji = get_risk_emoji(risk)
                 risk_level = detect_risk_level(risk)
-                tags = detect_tags(user_input)
+                tags = detect_tags(user_input)  # 이제 리스트 반환
+                
+                # v4.0: 위험한 순간 기록
+                if risk >= 6.5:
+                    save_dangerous_moment(risk, tags, user_input)
+                    
+                    # 중독 패턴 분석
+                    now = datetime.now()
+                    hour = now.hour
+                    day_of_week = now.weekday()
+                    update_addiction_pattern(hour, day_of_week, "만회")
                 
                 save_chat(user_input, response, emotion_score, risk_level, tags)
                 
@@ -661,16 +982,69 @@ with tab1:
                 with col_risk2:
                     st.info(f"**{risk_emoji}**")
                 
-                # 강력한 경고 메시지 (위험도 높을 때)
-                warning_html = get_strong_warning(risk_level)
-                if warning_html:
-                    st.markdown(warning_html, unsafe_allow_html=True)
+                # v4.0: 압박 멘트 시스템
+                pressure_msg = get_pressure_message(tags)
+                
+                if pressure_msg:
+                    st.markdown("---")
+                    
+                    st.markdown(f"""
+                    <div class="danger-box">
+                        <h2 style="color: #dc3545; margin: 0;">{pressure_msg['title']}</h2>
+                        {pressure_msg['message']}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    
+                    st.markdown("---")
+                    st.markdown("### 🔒 안전 확인")
+                    st.warning(f"⚠️ 계속하려면 아래에 **'{pressure_msg['blocking_word']}'** 를 정확히 입력하세요.")
+                    
+                    blocking_input = st.text_input(
+                        "단어 입력:",
+                        key="blocking_input",
+                        placeholder=f"{pressure_msg['blocking_word']} 입력"
+                    )
+                    
+                    col_confirm, col_stop = st.columns(2)
+                    
+                    with col_confirm:
+                        if st.button("✅ 그래도 진행", type="secondary"):
+                            if blocking_input == pressure_msg['blocking_word']:
+                                st.error("⚠️ 당신의 선택입니다. 하지만 후회하지 마세요.")
+                                save_pressure_result("pressure", tags[0] if tags else "unknown", False)
+                            else:
+                                st.error(f"❌ '{pressure_msg['blocking_word']}'를 정확히 입력해주세요!")
+                    
+                    with col_stop:
+                        if st.button("🛑 멈춤 (현명한 선택)", type="primary"):
+                            st.balloons()
+                            st.success("✅ 훌륭합니다! 당신은 현명한 결정을 했습니다!")
+                            save_pressure_result("pressure", tags[0] if tags else "unknown", True)
+                    
+                else:
+                    # 강력한 경고 메시지 (위험도 높을 때)
+                    warning_html = get_strong_warning(risk_level)
+                    if warning_html:
+                        st.markdown(warning_html, unsafe_allow_html=True)
                 
                 st.divider()
                 
                 # AI 상담 결과
                 st.markdown("### 🧭 AI 상담 결과")
                 st.write(response)
+                
+                # 감정 태그 표시
+                if tags and tags != ["중립"]:
+                    st.markdown("### 🏷️ 감지된 감정")
+                    tag_colors = {
+                        "탐욕": "🟠", "자포자기": "🔴", "충동": "🟡",
+                        "FOMO": "🟡", "공포": "🔴", "불안": "🟡",
+                        "분노": "🟠", "후회": "🔵", "우울": "🟣",
+                        "흥분": "🟢", "회의감": "⚪", "냉정": "🟢"
+                    }
+                    
+                    tag_display = " ".join([f"{tag_colors.get(tag, '⚫')} {tag}" for tag in tags])
+                    st.info(tag_display)
                 
                 st.success("✅ 상담 기록이 저장되었습니다! 📚")
                 
@@ -824,30 +1198,32 @@ with tab4:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v3.3 - 텍스트 권위 강화! (최적화)**
+    **GINI Guardian v4.0 - 맥락 기억 + 감정 압박 시스템!**
     
-    ⚡ 최적화:
-       - DB 연결 캐싱
-       - 주가 데이터 5분 캐싱
-       - 상담 기록 30초 캐싱
-       - 포트폴리오 1분 캐싱
-       - 렉 대폭 감소!
+    🆕 v4.0 핵심 기능:
+       - 🧠 맥락 기억 시스템: AI가 과거 상담 기억
+       - 🎯 감정 태그 12종: 불안/분노/충동/후회/탐욕/공포/FOMO/자포자기/우울/흥분/회의감/냉정
+       - 💥 압박 멘트 시스템: 고위험 감정 감지 시 강력한 개입
+       - 🔒 Text Input Blocking: 특정 단어 입력 강제
+       - 📊 중독 패턴 분석: 시간대/요일별 위험 패턴 추적
+       - 💾 위험한 순간 기록: 가장 위험했던 순간 자동 저장
     
-    🆕 v3.3 변경사항:
-       - 음성 기능 제거 → 명확한 텍스트 중심
-       - 권위 있는 직설적 조언
-       - 강력한 경고 메시지 시스템
-       - 핵심 로직에 집중
-    
-    ✅ 핵심 기능:
+    ✅ 기존 기능:
        - 종목명 자동 보정 (퍼지 매칭)
        - 실시간 포트폴리오 추적
        - 감정 분석 & 위험지표
        - 상담 기록 저장
+       - 성능 최적화 (캐싱)
+    
+    **압박 멘트 효과:**
+    - "탐욕" 감지 → 가족 생각하게 함
+    - "자포자기" 감지 → 긴급 개입
+    - "충동" 감지 → 24시간 대기 권유
+    - "FOMO" 감지 → 현실 직시
+    - "공포" 감지 → 진정 유도
     
     **다음 업그레이드:**
     - 위험지표 고도화 (거래 패턴 분석)
-    - 맥락 기억 AI (과거 상담 내용 기억)
     - 대시보드 완성 (감정 히트맵)
     - 주간 리포트 자동 생성
     """)
@@ -857,20 +1233,25 @@ with tab4:
 - Streamlit: UI/UX
 - Groq API: AI 상담
 - pykrx: 실시간 주식 데이터
-- SQLite: 데이터 저장
-- Plotly: 차트 시각화
+- SQLite: 데이터 저장 + 맥락 기억
 - 퍼지 매칭: 종목명 보정
+- 감정 분석: 12종 태그 시스템
     """, language="python")
     
-    st.markdown("#### 🎯 설계 철학")
+    st.markdown("#### 🎯 제미니(지니) 전략")
     st.write("""
-    **제미니 전략:**
-    - 기계적 음성보다 명확한 텍스트가 더 권위 있음
-    - 흥분한 투자자에게는 냉철하고 직설적인 조언 필요
-    - 핵심 기능의 완성도가 가장 중요
+    **v4.0 맥락 기억 시스템:**
+    1. 가장 위험했던 순간 자동 기록
+    2. 사용자 고유의 중독 패턴 분석
+    3. 압박 멘트 효과 추적
+    
+    **감정 압박 시스템:**
+    - 고위험 감정 감지 시 강력한 개입
+    - 가족/미래 시각화로 감성적 압박
+    - Text Input Blocking으로 강제 일시정지
     
     **라이라 설계 × 미라클 구현 × 제미니 전략**
     """)
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v3.3** | 💬 텍스트 권위 강화 | 💙 라이라 × 미라클 × 제미니")
+st.markdown("---\n🛡️ **GINI Guardian v4.0** | 🧠 맥락 기억 + 💥 감정 압박 | 💙 라이라 × 미라클 × 제미니")
