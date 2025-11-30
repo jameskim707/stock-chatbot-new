@@ -418,7 +418,7 @@ def delete_portfolio_stock(ticker):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("DELETE FROM portfolio WHERE ticker = ?", (ticker,))
-    conn.()
+    conn.commit()
     conn.close()
     
     # 캐시 무효화
