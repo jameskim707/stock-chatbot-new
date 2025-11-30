@@ -791,7 +791,7 @@ def update_addiction_pattern(hour, day_of_week, purpose="만회"):
         VALUES (?, ?, ?)
         """, (hour, day_of_week, purpose))
     
-    conn.()
+    conn.commit()
     conn.close()
 
 def save_pressure_result(message_type, emotion_tag, user_stopped):
@@ -854,7 +854,7 @@ def get_user_memory():
             "rate": round(stopped / total * 100, 1) if total > 0 else 0
         }
     
-    conn.close()
+    .close()
     return memory
 
 # ============================================================================
@@ -866,7 +866,7 @@ def create_emotion_heatmap():
     import plotly.graph_objects as go
     import numpy as np
     
-    conn = sqlite3.connect("gini.db", check_same_thread=False)
+     = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
     
     # 시간대별, 요일별 감정 점수 조회
