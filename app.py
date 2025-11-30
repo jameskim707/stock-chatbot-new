@@ -1,7 +1,7 @@
 """
-🛡️ GINI Guardian v3.0 — 실시간 포트폴리오 연동!
-✨ 새 기능: pykrx 기반 실시간 주가 추적
-✨ 자동 수익률 계산 + 과매매 위험 감지
+🛡️ GINI Guardian v3.1 — 완전 음성 상담 시스템!
+✨ NEW: Groq Whisper 기반 음성 입력 (STT)
+✨ 음성으로 말하면 → 음성으로 답변!
 
 라이라 설계 × 미라클 구현 🔥
 """
@@ -28,7 +28,7 @@ except:
 
 import random
 
-st.set_page_config(page_title="GINI Guardian v3.0", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v3.1", page_icon="🛡️", layout="wide")
 
 # ============================================================================
 # 📊 실시간 주식 데이터 함수들
@@ -435,6 +435,40 @@ def text_to_speech(text):
         return None
 
 # ============================================================================
+# 🎙️ 음성 입력 함수 (NEW!)
+# ============================================================================
+
+def speech_to_text_groq(audio_bytes):
+    """
+    Groq Whisper로 음성 → 텍스트 변환
+    
+    Args:
+        audio_bytes: 오디오 파일 바이트
+    
+    Returns:
+        str: 변환된 텍스트
+    """
+    try:
+        api_key = os.getenv("GROQ_API_KEY") or "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"
+        client = Groq(api_key=api_key)
+        
+        # 오디오 파일 객체 생성
+        audio_file = io.BytesIO(audio_bytes)
+        audio_file.name = "audio.wav"
+        
+        # Whisper API 호출
+        transcription = client.audio.transcriptions.create(
+            model="whisper-large-v3-turbo",
+            file=audio_file,
+            language="ko"  # 한국어 지정
+        )
+        
+        return transcription.text
+        
+    except Exception as e:
+        return f"❌ 음성 인식 실패: {str(e)}"
+
+# ============================================================================
 # Session State 초기화
 # ============================================================================
 
@@ -455,8 +489,8 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.0</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 실시간 포트폴리오 연동 🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.1</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 음성 입력 (STT) 추가 🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
@@ -464,7 +498,7 @@ st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="
 
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🧭 일반 상담",
-    "🎤 음성 상담", 
+    "🎙️ 완전 음성 상담 (NEW!)", 
     "📚 상담 기록",
     "💼 실시간 포트폴리오",
     "⚙️ 설정"
@@ -529,74 +563,120 @@ with tab1:
                 st.warning("⚠️ 질문을 입력해주세요!")
 
 # ============================================================================
-# TAB 2: 음성 상담 (이전과 동일)
+# TAB 2: 완전 음성 상담 (NEW! 음성 입력 + 음성 출력)
 # ============================================================================
 
 with tab2:
-    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🎤 음성 상담</span></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">🎤 완전 음성 상담</span></div>', unsafe_allow_html=True)
     
-    st.subheader("🎤 음성 상담 서비스")
-    st.info("✨ 텍스트로 질문하면 AI가 음성으로 답변해드립니다!")
+    st.subheader("🎙️ 음성 입력 + 음성 출력")
+    st.info("✨ NEW! 말로 고민을 털어놓으면 AI가 음성으로 답변해드립니다!")
     
-    voice_input = st.text_area(
-        "예) 어제 손실이 커서 정말 답답해요",
-        height=100,
-        key="voice_textarea"
+    # 입력 방식 선택
+    input_mode = st.radio(
+        "입력 방식 선택:",
+        ["🎙️ 음성으로 말하기 (NEW!)", "⌨️ 텍스트로 입력하기"],
+        horizontal=True
     )
     
-    col1, col2 = st.columns([1, 3])
+    user_input_text = ""
     
-    with col1:
-        if st.button("🎤 음성 상담하기", use_container_width=True, type="primary"):
-            if voice_input.strip():
-                with st.spinner("🤔 AI가 분석 중... (2~3초)"):
-                    response, emotion_score = groq_counsel(voice_input)
+    if input_mode == "🎙️ 음성으로 말하기 (NEW!)":
+        st.markdown("---")
+        st.markdown("### 🎙️ 음성 녹음")
+        st.write("아래 마이크 버튼을 눌러 음성으로 고민을 말씀해주세요:")
+        
+        audio_value = st.audio_input("🎙️ 녹음 시작 (클릭)")
+        
+        if audio_value:
+            st.success("✅ 녹음 완료!")
+            st.audio(audio_value)
+            
+            if st.button("🎤 음성 인식 시작", type="primary"):
+                with st.spinner("🤔 AI가 듣고 있습니다..."):
+                    audio_bytes = audio_value.read()
+                    user_input_text = speech_to_text_groq(audio_bytes)
                     
-                    volatility_score = 5.0
-                    news_score = 3.0
-                    risk = calc_risk_score(emotion_score, volatility_score, news_score)
-                    risk_emoji = get_risk_emoji(risk)
-                    risk_level = detect_risk_level(risk)
-                    tags = detect_tags(voice_input)
-                    
-                    save_chat(voice_input, response, emotion_score, risk_level, tags)
-                    
-                    st.markdown("---")
-                    
-                    col_risk1, col_risk2 = st.columns(2)
-                    
-                    with col_risk1:
-                        st.metric(
-                            label="📊 위험지표",
-                            value=f"{risk} / 10",
-                            delta=None
-                        )
-                    
-                    with col_risk2:
-                        st.info(f"**{risk_emoji}**")
-                    
-                    st.divider()
-                    
-                    st.markdown("### 🧭 AI 상담 결과")
-                    st.write(response)
-                    
-                    st.divider()
-                    
-                    st.markdown("### 🎤 음성 답변")
-                    st.info("⏸️ 아래 플레이어에서 음성 답변을 들어보세요!")
-                    
-                    with st.spinner("🎵 음성 생성 중..."):
-                        audio_fp = text_to_speech(response)
+                    if "❌" not in user_input_text:
+                        st.success(f"📝 인식된 내용: {user_input_text}")
                         
-                        if audio_fp:
-                            st.audio(audio_fp, format='audio/mp3')
-                            st.success("✅ 음성 상담이 완료되었습니다! 🎤")
-                        else:
-                            st.error("❌ 음성 생성에 실패했습니다.")
+                        # 세션에 저장
+                        st.session_state.voice_recognized_text = user_input_text
+                    else:
+                        st.error(user_input_text)
+                        user_input_text = ""
+        
+        # 인식된 텍스트가 있으면 표시
+        if 'voice_recognized_text' in st.session_state and st.session_state.voice_recognized_text:
+            user_input_text = st.session_state.voice_recognized_text
+            st.info(f"💬 인식된 내용: {user_input_text}")
+    
+    else:  # 텍스트 입력
+        st.markdown("---")
+        st.markdown("### ⌨️ 텍스트 입력")
+        user_input_text = st.text_area(
+            "예) 어제 손실이 커서 정말 답답해요",
+            height=100,
+            key="voice_text_input"
+        )
+    
+    st.markdown("---")
+    
+    # 상담 시작 버튼
+    if st.button("🎤 음성 상담 시작", use_container_width=True, type="primary"):
+        if user_input_text and user_input_text.strip() and "❌" not in user_input_text:
+            with st.spinner("🤔 AI가 분석 중... (2~3초)"):
+                response, emotion_score = groq_counsel(user_input_text)
+                
+                volatility_score = 5.0
+                news_score = 3.0
+                risk = calc_risk_score(emotion_score, volatility_score, news_score)
+                risk_emoji = get_risk_emoji(risk)
+                risk_level = detect_risk_level(risk)
+                tags = detect_tags(user_input_text)
+                
+                save_chat(user_input_text, response, emotion_score, risk_level, tags)
+                
+                st.markdown("---")
+                
+                col_risk1, col_risk2 = st.columns(2)
+                
+                with col_risk1:
+                    st.metric(
+                        label="📊 위험지표",
+                        value=f"{risk} / 10",
+                        delta=None
+                    )
+                
+                with col_risk2:
+                    st.info(f"**{risk_emoji}**")
+                
+                st.divider()
+                
+                st.markdown("### 🧭 AI 상담 결과")
+                st.write(response)
+                
+                st.divider()
+                
+                st.markdown("### 🎤 음성 답변")
+                st.info("⏸️ 아래 플레이어에서 음성 답변을 들어보세요!")
+                
+                with st.spinner("🎵 음성 생성 중..."):
+                    audio_fp = text_to_speech(response)
                     
-                    st.markdown("---")
-            else:
-                st.warning("⚠️ 질문을 입력해주세요!")
+                    if audio_fp:
+                        st.audio(audio_fp, format='audio/mp3')
+                        st.success("✅ 음성 상담이 완료되었습니다! 🎤")
+                        
+                        # 인식된 텍스트 초기화
+                        if 'voice_recognized_text' in st.session_state:
+                            st.session_state.voice_recognized_text = ""
+                    else:
+                        st.error("❌ 음성 생성에 실패했습니다.")
+                
+                st.markdown("---")
+        else:
+            st.warning("⚠️ 질문을 입력하거나 음성을 녹음해주세요!")
 
 # ============================================================================
 # TAB 3: 상담 기록 (이전과 동일)
@@ -753,37 +833,42 @@ with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v3.0 - 실시간 포트폴리오 연동 완성!**
+    **GINI Guardian v3.1 - 완전 음성 상담 시스템 완성!**
     
-    🆕 NEW: 실시간 포트폴리오 기능
-       - pykrx 기반 실시간 주가 조회 (20분 지연)
+    🆕 NEW: 음성 입력 (STT) 기능
+       - Groq Whisper 기반 음성 인식
+       - 말로 고민 털어놓기 → 음성으로 답변받기
+       - 완전한 음성 상담 시스템
+       - 한국어 완벽 지원
+       - 무료! (Groq API 사용)
+    
+    ✅ v3.0 기능:
+       - 실시간 포트폴리오 (pykrx)
        - 자동 수익률 계산
-       - 종목 추가/삭제 기능
-       - 과매매 위험 감지
-       - pykrx 연결 상태: {'✅ 연결됨' if PYKRX_AVAILABLE else '❌ Mock 모드'}
+       - 종목 추가/삭제
     
     ✅ 기존 기능:
-       - 텍스트/음성 상담
+       - 텍스트/음성(TTS) 상담
        - 감정 점수 분석
        - 위험지표 계산
        - 상담 기록 저장
     
     **다음 업그레이드:**
-    - 음성 입력 기능 (STT)
-    - 과매매 패턴 AI 분석
-    - 주간 리포트 자동 생성
-    - 알림 시스템
+    - 맥락 기억 AI (과거 상담 내용 기억)
+    - 위험지표 고도화 (거래 패턴 분석)
+    - 감정 태그 12종 확장
+    - 대시보드 실제 구현
     """)
     
     st.markdown("#### 📋 기술 스택")
     st.code("""
 - Streamlit: UI/UX
-- Groq API: AI 상담
-- gTTS: 음성 생성
+- Groq API: AI 상담 + Whisper STT
+- gTTS: 음성 생성 (TTS)
 - pykrx: 실시간 주식 데이터
 - SQLite: 데이터 저장
 - Plotly: 차트 시각화
     """, language="python")
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v3.0** | 💼 실시간 포트폴리오 연동 | 💙 라이라 설계 × 미라클 구현")
+st.markdown("---\n🛡️ **GINI Guardian v3.1** | 🎙️ 완전 음성 상담 | 💙 라이라 설계 × 미라클 구현")
