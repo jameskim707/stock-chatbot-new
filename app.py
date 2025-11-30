@@ -21,17 +21,19 @@ import os
 from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
-# 라이라 CSS 테마 - app.py에 추가할 코드
-# st.set_page_config() 바로 아래, PWA 헤더 전에 추가하세요
+# ============================================================================
+# 🎨 라이라 CSS 테마 v2 - 부드러운 라벤더
+# ============================================================================
+# app.py의 st.set_page_config() 바로 아래에 추가
 
 st.markdown("""
 <style>
 /* ------------------------------- */
-/* 🌙 Global Dark Theme */
+/* 🌙 Global Theme - 부드러운 라벤더 */
 /* ------------------------------- */
 .stApp {
-    background-color: #0E0C22;
-    color: #E8E5FF;
+    background-color: #1A1625 !important;
+    color: #EDEAFF;
     font-family: "Pretendard", "Inter", sans-serif;
 }
 
@@ -39,53 +41,79 @@ st.markdown("""
 /* 🎨 Brand Colors */
 /* ------------------------------- */
 :root {
-    --pastel-violet: #CABDFF;
-    --pastel-violet-light: #D7CEFF;
-    --lavender-blue: #B8C7FF;
-    --glass-white: rgba(255,255,255,0.08);
+    --soft-lavender: #A78BFA;
+    --pastel-violet: #C4B5FD;
     --glass-border: rgba(255,255,255,0.12);
-    --text-main: #EDEAFF;
-    --text-sub: #C5C0E6;
-    --highlight-pink: #FFD1F3;
+    --headline: #EDEAFF;
+    --body-text: #D8D3E8;
+    --sub-text: #B5ADC7;
 }
 
 /* ------------------------------- */
-/* 🛡️ Logo + Title */
+/* 🌈 메인 박스 그라데이션 */
 /* ------------------------------- */
-.header-animated {
-    color: #0B3D91 !important;
-    font-size: 2.3rem !important;
-    font-weight: 700 !important;
-    text-align: center;
-}
-
-/* "FINAL! 라이라 최종 수정 완료" 배너 */
-.final-tag {
-    color: var(--highlight-pink) !important;
-    text-shadow: 0 0 8px rgba(255,180,255,0.45);
-    font-weight: 600;
-    font-size: 1.1rem;
-}
-
-/* ------------------------------- */
-/* 🌈 Main Gradient Banner */
-/* ------------------------------- */
-.intro-banner {
-    background: linear-gradient(90deg, var(--pastel-violet), var(--lavender-blue)) !important;
+.intro-banner,
+.main-banner {
+    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
     padding: 26px !important;
     border-radius: 18px !important;
     border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 0 25px rgba(150,140,255,0.15) !important;
+    box-shadow: 0 0 25px rgba(167,139,250,0.2) !important;
     backdrop-filter: blur(6px);
 }
 
 .intro-banner h2,
-.intro-banner p {
-    color: var(--text-main) !important;
+.intro-banner p,
+.main-banner h2,
+.main-banner p {
+    color: var(--headline) !important;
+    text-shadow: 
+        0 0 8px rgba(167,139,250,0.4),
+        0 0 14px rgba(167,139,250,0.25);
 }
 
 /* ------------------------------- */
-/* 📦 Section Boxes (Glass UI) */
+/* 📝 텍스트 컬러 */
+/* ------------------------------- */
+h1, h2, h3 {
+    color: var(--headline) !important;
+    text-shadow: 
+        0 0 8px rgba(167,139,250,0.4),
+        0 0 14px rgba(167,139,250,0.25);
+}
+
+p, .stMarkdown {
+    color: var(--body-text) !important;
+}
+
+.stCaption {
+    color: var(--sub-text) !important;
+}
+
+/* ------------------------------- */
+/* 🟣 Buttons - 라벤더 그라데이션 */
+/* ------------------------------- */
+.stButton > button {
+    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
+    color: #1A1535 !important;
+    font-weight: 600 !important;
+    border-radius: 12px !important;
+    padding: 12px 18px !important;
+    border: none !important;
+    box-shadow: 
+        0 0 12px rgba(167,139,250,0.35),
+        0 4px 8px rgba(167,139,250,0.2) !important;
+}
+
+.stButton > button:hover {
+    filter: brightness(1.12) !important;
+    box-shadow: 
+        0 0 18px rgba(167,139,250,0.5),
+        0 6px 12px rgba(167,139,250,0.3) !important;
+}
+
+/* ------------------------------- */
+/* 📦 Glass UI Boxes */
 /* ------------------------------- */
 .stExpander {
     background: rgba(255,255,255,0.05) !important;
@@ -95,66 +123,63 @@ st.markdown("""
 }
 
 .streamlit-expanderHeader {
-    background: rgba(255,255,255,0.04) !important;
-    color: var(--pastel-violet-light) !important;
+    background: rgba(167,139,250,0.08) !important;
+    color: var(--headline) !important;
     border-radius: 12px !important;
     padding: 14px !important;
-}
-
-/* ------------------------------- */
-/* 🟣 Buttons */
-/* ------------------------------- */
-.stButton > button {
-    background: linear-gradient(90deg, var(--pastel-violet), var(--lavender-blue)) !important;
-    color: #1A1535 !important;
-    font-weight: 600 !important;
-    border-radius: 12px !important;
-    padding: 12px 18px !important;
-    border: none !important;
-    box-shadow: 0 0 12px rgba(180,160,255,0.25) !important;
-}
-
-.stButton > button:hover {
-    filter: brightness(1.08) !important;
-}
-
-/* ------------------------------- */
-/* 🧭 Navigation Tabs */
-/* ------------------------------- */
-.stTabs [data-baseweb="tab"] {
-    color: var(--pastel-violet-light) !important;
-    opacity: 0.9;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    opacity: 1;
-    color: white !important;
-}
-
-.stTabs [aria-selected="true"] {
-    color: white !important;
-    border-bottom-color: var(--pastel-violet) !important;
 }
 
 /* ------------------------------- */
 /* 📊 Input Fields */
 /* ------------------------------- */
 .stTextInput > div > div > input,
-.stTextArea > div > div > textarea {
+.stTextArea > div > div > textarea,
+.stNumberInput > div > div > input {
     background: rgba(255,255,255,0.08) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    color: var(--text-main) !important;
+    border: 1px solid var(--glass-border) !important;
+    color: var(--headline) !important;
     border-radius: 10px !important;
     padding: 12px !important;
 }
 
 .stTextInput > div > div > input::placeholder,
 .stTextArea > div > div > textarea::placeholder {
-    color: var(--text-sub) !important;
+    color: var(--sub-text) !important;
+}
+
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: var(--soft-lavender) !important;
+    box-shadow: 0 0 8px rgba(167,139,250,0.3) !important;
 }
 
 /* ------------------------------- */
-/* 📈 Charts & Metrics */
+/* 🧭 Tabs Navigation */
+/* ------------------------------- */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+}
+
+.stTabs [data-baseweb="tab"] {
+    background: rgba(255,255,255,0.05);
+    color: var(--body-text) !important;
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.stTabs [data-baseweb="tab"]:hover {
+    background: rgba(167,139,250,0.15);
+    color: var(--headline) !important;
+}
+
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
+    color: #1A1535 !important;
+    font-weight: 600;
+}
+
+/* ------------------------------- */
+/* 📈 Metrics & Stats */
 /* ------------------------------- */
 .stMetric {
     background: rgba(255,255,255,0.05) !important;
@@ -164,19 +189,12 @@ st.markdown("""
 }
 
 .stMetric label {
-    color: var(--text-sub) !important;
+    color: var(--sub-text) !important;
 }
 
 .stMetric [data-testid="stMetricValue"] {
-    color: var(--pastel-violet-light) !important;
-}
-
-/* ------------------------------- */
-/* 🔻 Dividers */
-/* ------------------------------- */
-hr {
-    border-bottom: 1px solid rgba(255,255,255,0.05) !important;
-    margin: 20px 0 !important;
+    color: var(--soft-lavender) !important;
+    text-shadow: 0 0 8px rgba(167,139,250,0.4);
 }
 
 /* ------------------------------- */
@@ -189,15 +207,20 @@ hr {
     padding: 16px !important;
 }
 
+.stChatMessage [data-testid="chatAvatarIcon-user"] {
+    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
+}
+
 /* ------------------------------- */
 /* 📱 Sidebar */
 /* ------------------------------- */
 [data-testid="stSidebar"] {
-    background-color: #0A0818 !important;
+    background-color: #13111A !important;
+    border-right: 1px solid var(--glass-border);
 }
 
 [data-testid="stSidebar"] .stMarkdown {
-    color: var(--text-main) !important;
+    color: var(--body-text) !important;
 }
 
 /* ------------------------------- */
@@ -207,11 +230,39 @@ hr {
     background: rgba(255,255,255,0.08) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: 10px !important;
-    color: var(--text-main) !important;
+    color: var(--headline) !important;
+}
+
+/* ------------------------------- */
+/* 🔻 Dividers */
+/* ------------------------------- */
+hr {
+    border: none !important;
+    border-bottom: 1px solid rgba(167,139,250,0.15) !important;
+    margin: 20px 0 !important;
+}
+
+/* ------------------------------- */
+/* 🌟 Header Title */
+/* ------------------------------- */
+.header-animated {
+    color: var(--headline) !important;
+    font-size: 2.3rem !important;
+    font-weight: 700 !important;
+    text-align: center;
+    text-shadow: 
+        0 0 12px rgba(167,139,250,0.5),
+        0 0 20px rgba(167,139,250,0.3);
+}
+
+.final-tag {
+    color: #FFD1F3 !important;
+    text-shadow: 0 0 8px rgba(255,180,255,0.5);
+    font-weight: 600;
+    font-size: 1.1rem;
 }
 </style>
 """, unsafe_allow_html=True)
-
 
 
 # ============================================================================
@@ -2416,3 +2467,4 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
+
