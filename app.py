@@ -1,9 +1,9 @@
 """
-🛡️ GINI Guardian v3.1 — 완전 음성 상담 시스템!
-✨ NEW: Groq Whisper 기반 음성 입력 (STT)
-✨ 음성으로 말하면 → 음성으로 답변!
+🛡️ GINI Guardian v3.2 — 종목명 인식 완벽 시스템!
+✨ NEW: 제미니 전략 구현 - 퍼지 매칭 + 확인 루프
+✨ "상승전자" → "삼성전자" 자동 보정!
 
-라이라 설계 × 미라클 구현 🔥
+라이라 설계 × 미라클 구현 × 제미니 전략 🔥
 """
 
 import streamlit as st
@@ -27,8 +27,88 @@ except:
     PYKRX_AVAILABLE = False
 
 import random
+from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v3.1", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v3.2", page_icon="🛡️", layout="wide")
+
+# ============================================================================
+# 📊 종목명 데이터베이스 (제미니 전략)
+# ============================================================================
+
+STOCK_NAMES_DB = {
+    '삼성전자': '005930', 'SK하이닉스': '000660', 'NAVER': '035420', '카카오': '035720',
+    '삼성바이오로직스': '207940', 'LG에너지솔루션': '373220', 'LG화학': '051910',
+    '현대차': '005380', '기아': '000270', '셀트리온': '068270', '포스코홀딩스': '005490',
+    '삼성SDI': '006400', 'SK이노베이션': '096770', 'KB금융': '105560', '신한지주': '055550',
+    'LG전자': '066570', '한국전력': '015760', '한미반도체': '042700', '한미약품': '128940',
+    '에코프로비엠': '247540', '에코프로': '086520', '엘앤에프': '066970', '알테오젠': '196170',
+    '카카오게임즈': '293490', '카카오뱅크': '323410', '하이브': '352820', 'CJ ENM': '035760',
+}
+
+COMMON_MISTAKES = {
+    '상승전자': '삼성전자', '삼성건조': '삼성전자', '삼성전지': '삼성전자',
+    '하이닉스': 'SK하이닉스', '에스케이하이닉스': 'SK하이닉스',
+    '네이바': 'NAVER', '네이버': 'NAVER', '카카오톡': '카카오',
+    '항미반도체': '한미반도체', '샐트리온': '셀트리온', '엘지화학': 'LG화학',
+    '현대자동차': '현대차',
+}
+
+def get_similarity(str1, str2):
+    """두 문자열 유사도 (0.0~1.0)"""
+    return SequenceMatcher(None, str1.lower(), str2.lower()).ratio()
+
+def find_similar_stock(input_text, threshold=0.7):
+    """퍼지 매칭으로 유사 종목 찾기"""
+    if input_text in STOCK_NAMES_DB:
+        return [(input_text, STOCK_NAMES_DB[input_text], 1.0)]
+    
+    if input_text in COMMON_MISTAKES:
+        corrected = COMMON_MISTAKES[input_text]
+        if corrected in STOCK_NAMES_DB:
+            return [(corrected, STOCK_NAMES_DB[corrected], 0.95)]
+    
+    similarities = []
+    for stock_name, stock_code in STOCK_NAMES_DB.items():
+        similarity = get_similarity(input_text, stock_name)
+        if similarity >= threshold:
+            similarities.append((stock_name, stock_code, similarity))
+    
+    similarities.sort(key=lambda x: x[2], reverse=True)
+    return similarities[:3]
+
+def extract_and_correct_stocks(text):
+    """텍스트에서 종목명 추출 및 보정"""
+    words = text.split()
+    found_stocks = []
+    corrected_text = text
+    needs_confirmation = False
+    
+    for word in words:
+        matches = find_similar_stock(word, threshold=0.7)
+        
+        if matches:
+            best_match = matches[0]
+            stock_name, stock_code, similarity = best_match
+            
+            if similarity < 1.0:
+                needs_confirmation = True
+            
+            corrected_text = corrected_text.replace(word, stock_name)
+            
+            found_stocks.append({
+                'original': word,
+                'corrected': stock_name,
+                'code': stock_code,
+                'confidence': similarity,
+                'alternatives': matches[1:] if len(matches) > 1 else []
+            })
+    
+    return {
+        'original': text,
+        'corrected': corrected_text,
+        'found_stocks': found_stocks,
+        'needs_confirmation': needs_confirmation
+    }
 
 # ============================================================================
 # 📊 실시간 주식 데이터 함수들
@@ -438,7 +518,52 @@ def text_to_speech(text):
 # 🎙️ 음성 입력 함수 (NEW!)
 # ============================================================================
 
-def speech_to_text_groq(audio_bytes):
+def correct_stock_names(text):
+    """
+    AI를 사용해 잘못 인식된 종목명 보정
+    
+    Args:
+        text: 음성 인식된 텍스트
+    
+    Returns:
+        str: 보정된 텍스트
+    """
+    try:
+        api_key = os.getenv("GROQ_API_KEY") or "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"
+        client = Groq(api_key=api_key)
+        
+        prompt = f"""다음 텍스트에서 잘못 인식된 주식 종목명이나 투자 용어를 올바르게 보정해주세요.
+        
+원본: {text}
+
+주요 종목명:
+- 삼성전자 (상승전자 ❌)
+- SK하이닉스
+- NAVER (네이버)
+- 카카오
+- LG화학
+- 현대차
+- 기아
+- 포스코
+- 셀트리온
+- 삼성바이오로직스
+- 한미반도체
+
+보정된 텍스트만 출력하세요. 설명 없이 텍스트만."""
+
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.1,
+            max_tokens=200
+        )
+        
+        corrected = response.choices[0].message.content.strip()
+        return corrected
+        
+    except:
+        # 보정 실패하면 원본 반환
+        return text
     """
     Groq Whisper로 음성 → 텍스트 변환
     
@@ -456,11 +581,12 @@ def speech_to_text_groq(audio_bytes):
         audio_file = io.BytesIO(audio_bytes)
         audio_file.name = "audio.wav"
         
-        # Whisper API 호출
+        # Whisper API 호출 (주식 종목명 힌트 추가)
         transcription = client.audio.transcriptions.create(
             model="whisper-large-v3-turbo",
             file=audio_file,
-            language="ko"  # 한국어 지정
+            language="ko",
+            prompt="삼성전자, SK하이닉스, NAVER, 카카오, LG화학, 현대차, 기아, 포스코, 셀트리온, 삼성바이오로직스, 한미반도체, 주식, 투자, 손실, 수익, 매수, 매도, 손절, 익절"  # 주식 용어 힌트
         )
         
         return transcription.text
@@ -489,8 +615,8 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.1</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 음성 입력 (STT) 추가 🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v3.2</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 종목명 완벽 인식 (제미니 전략) 🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
@@ -584,26 +710,77 @@ with tab2:
     if input_mode == "🎙️ 음성으로 말하기 (NEW!)":
         st.markdown("---")
         st.markdown("### 🎙️ 음성 녹음")
-        st.write("아래 마이크 버튼을 눌러 음성으로 고민을 말씀해주세요:")
+        st.write("음성 파일을 업로드하거나 녹음해주세요:")
         
-        audio_value = st.audio_input("🎙️ 녹음 시작 (클릭)")
+        # 파일 업로드 방식 (호환성)
+        audio_value = st.file_uploader(
+            "🎙️ 음성 파일 선택 (.wav, .mp3, .m4a)",
+            type=['wav', 'mp3', 'm4a', 'ogg'],
+            key="audio_upload"
+        )
         
         if audio_value:
-            st.success("✅ 녹음 완료!")
+            st.success("✅ 파일 업로드 완료!")
             st.audio(audio_value)
             
             if st.button("🎤 음성 인식 시작", type="primary"):
                 with st.spinner("🤔 AI가 듣고 있습니다..."):
                     audio_bytes = audio_value.read()
-                    user_input_text = speech_to_text_groq(audio_bytes)
+                    raw_text = speech_to_text_groq(audio_bytes)
                     
-                    if "❌" not in user_input_text:
-                        st.success(f"📝 인식된 내용: {user_input_text}")
+                    if "❌" not in raw_text:
+                        st.info(f"📝 원본 인식: {raw_text}")
                         
-                        # 세션에 저장
-                        st.session_state.voice_recognized_text = user_input_text
+                        # 제미니 전략: 종목명 퍼지 매칭 보정
+                        with st.spinner("✨ 종목명 분석 중..."):
+                            correction_result = extract_and_correct_stocks(raw_text)
+                        
+                        # 종목명 발견 및 보정
+                        if correction_result['found_stocks']:
+                            st.markdown("---")
+                            st.markdown("### 🎯 종목명 인식 결과")
+                            
+                            for stock in correction_result['found_stocks']:
+                                confidence = stock['confidence']
+                                
+                                if confidence == 1.0:
+                                    # 정확한 인식
+                                    st.success(f"✅ **{stock['corrected']}** ({stock['code']}) - 정확히 인식됨!")
+                                else:
+                                    # 보정 필요 - 확인 루프
+                                    st.warning(f"⚠️ '{stock['original']}'로 인식되었습니다.")
+                                    st.info(f"💡 혹시 **{stock['corrected']}** ({stock['code']})를 말씀하신 건가요? (신뢰도: {confidence:.0%})")
+                                    
+                                    # 대안 제시
+                                    if stock['alternatives']:
+                                        alt_names = [f"{s[0]} ({s[2]:.0%})" for s in stock['alternatives']]
+                                        st.write(f"🔄 다른 가능성: {', '.join(alt_names)}")
+                                    
+                                    # 확인 버튼
+                                    col1, col2 = st.columns(2)
+                                    
+                                    with col1:
+                                        if st.button(f"✅ 네, {stock['corrected']} 맞습니다", key=f"confirm_{stock['original']}"):
+                                            st.session_state.voice_recognized_text = correction_result['corrected']
+                                            st.success("확인되었습니다!")
+                                            st.rerun()
+                                    
+                                    with col2:
+                                        if st.button("🔄 다시 녹음할게요", key=f"retry_{stock['original']}"):
+                                            st.session_state.voice_recognized_text = ""
+                                            st.rerun()
+                            
+                            # 자동 보정된 텍스트 저장
+                            if not correction_result['needs_confirmation']:
+                                st.session_state.voice_recognized_text = correction_result['corrected']
+                                st.success(f"✅ 최종 인식: {correction_result['corrected']}")
+                        else:
+                            # 종목명 없음
+                            st.session_state.voice_recognized_text = raw_text
+                            st.success(f"✅ 인식 완료: {raw_text}")
+                        
                     else:
-                        st.error(user_input_text)
+                        st.error(raw_text)
                         user_input_text = ""
         
         # 인식된 텍스트가 있으면 표시
