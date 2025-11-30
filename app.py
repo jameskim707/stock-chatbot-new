@@ -1,9 +1,8 @@
 """
-🛡️ GINI Guardian v4.0 — 맥락 기억 + 감정 압박 시스템!
-✨ NEW: 과거 상담 기억하는 AI
-✨ NEW: 감정 태그 12종 확장
-✨ NEW: 강력한 압박 멘트 + Text Input Blocking
-✨ 중독 패턴 분석 & 추적
+🛡️ GINI Guardian v4.1 — 대시보드 완성!
+✨ NEW: 감정 히트맵, 위험지표 차트, 통계 시각화
+✨ 맥락 기억 + 감정 압박 시스템
+✨ 12종 감정 태그 + 압박 멘트
 
 라이라 설계 × 미라클 구현 × 제미니 전략 🔥
 """
@@ -21,7 +20,7 @@ import io
 import os
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v4.0", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v4.1", page_icon="🛡️", layout="wide")
 
 # ============================================================================
 # 📊 종목명 데이터베이스 (제미니 전략)
@@ -791,6 +790,199 @@ def get_user_memory():
     conn.close()
     return memory
 
+# ============================================================================
+# 📊 대시보드 시각화 함수 (v4.1)
+# ============================================================================
+
+def create_emotion_heatmap():
+    """감정 히트맵 생성 (요일 × 시간대)"""
+    import plotly.graph_objects as go
+    import numpy as np
+    
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    # 시간대별, 요일별 감정 점수 조회
+    cur.execute("""
+    SELECT 
+        CAST(strftime('%w', timestamp) AS INTEGER) as day_of_week,
+        CAST(strftime('%H', timestamp) AS INTEGER) as hour,
+        AVG(emotion_score) as avg_emotion
+    FROM chats
+    WHERE emotion_score IS NOT NULL
+    GROUP BY day_of_week, hour
+    """)
+    
+    data = cur.fetchall()
+    conn.close()
+    
+    # 히트맵 데이터 생성 (7일 × 24시간)
+    heatmap_data = np.zeros((7, 24))
+    
+    for day, hour, emotion in data:
+        heatmap_data[day][hour] = emotion
+    
+    # 요일 이름
+    days = ['일', '월', '화', '수', '목', '금', '토']
+    hours = [f"{h}시" for h in range(24)]
+    
+    fig = go.Figure(data=go.Heatmap(
+        z=heatmap_data,
+        x=hours,
+        y=days,
+        colorscale='RdYlGn_r',  # 빨강(위험) → 노랑 → 초록(안전)
+        text=heatmap_data,
+        texttemplate='%{text:.1f}',
+        textfont={"size": 10},
+        colorbar=dict(title="감정 점수")
+    ))
+    
+    fig.update_layout(
+        title="📅 요일 × 시간대 감정 히트맵",
+        xaxis_title="시간대",
+        yaxis_title="요일",
+        height=400
+    )
+    
+    return fig
+
+def create_risk_timeline():
+    """위험지표 시간별 추이"""
+    import plotly.express as px
+    
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    SELECT timestamp, emotion_score
+    FROM chats
+    WHERE emotion_score IS NOT NULL
+    ORDER BY timestamp
+    LIMIT 50
+    """)
+    
+    data = cur.fetchall()
+    conn.close()
+    
+    if not data:
+        return None
+    
+    timestamps = [row[0] for row in data]
+    scores = [row[1] for row in data]
+    
+    import pandas as pd
+    df = pd.DataFrame({
+        '시간': timestamps,
+        '감정점수': scores
+    })
+    
+    fig = px.line(df, x='시간', y='감정점수', 
+                  title='📈 시간별 감정 점수 추이',
+                  markers=True)
+    
+    # 위험 구간 표시
+    fig.add_hline(y=6.5, line_dash="dash", line_color="red", 
+                  annotation_text="HIGH 위험")
+    fig.add_hline(y=5.0, line_dash="dash", line_color="orange", 
+                  annotation_text="MID 주의")
+    
+    fig.update_layout(height=400)
+    
+    return fig
+
+def create_emotion_tag_chart():
+    """감정 태그 빈도 차트"""
+    import plotly.express as px
+    
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    cur.execute("""
+    SELECT tags
+    FROM chats
+    WHERE tags IS NOT NULL AND tags != '중립'
+    """)
+    
+    rows = cur.fetchall()
+    conn.close()
+    
+    # 태그 카운트
+    tag_counts = {}
+    for row in rows:
+        tags = row[0].split(', ')
+        for tag in tags:
+            tag = tag.strip()
+            if tag and tag != '중립':
+                tag_counts[tag] = tag_counts.get(tag, 0) + 1
+    
+    if not tag_counts:
+        return None
+    
+    # 상위 10개
+    sorted_tags = sorted(tag_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+    
+    import pandas as pd
+    df = pd.DataFrame(sorted_tags, columns=['감정태그', '빈도'])
+    
+    fig = px.bar(df, x='감정태그', y='빈도',
+                 title='🏷️ 감정 태그 빈도 (상위 10개)',
+                 color='빈도',
+                 color_continuous_scale='Reds')
+    
+    fig.update_layout(height=400)
+    
+    return fig
+
+def get_dashboard_stats():
+    """대시보드 통계 데이터"""
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
+    cur = conn.cursor()
+    
+    stats = {}
+    
+    # 총 상담 횟수
+    cur.execute("SELECT COUNT(*) FROM chats")
+    stats['total_chats'] = cur.fetchone()[0]
+    
+    # 평균 감정 점수
+    cur.execute("SELECT AVG(emotion_score) FROM chats WHERE emotion_score IS NOT NULL")
+    avg_emotion = cur.fetchone()[0]
+    stats['avg_emotion'] = round(avg_emotion, 2) if avg_emotion else 0
+    
+    # 고위험 상담 횟수
+    cur.execute("SELECT COUNT(*) FROM chats WHERE risk_level = 'HIGH'")
+    stats['high_risk_count'] = cur.fetchone()[0]
+    
+    # 최근 7일 상담 횟수
+    cur.execute("""
+    SELECT COUNT(*) FROM chats 
+    WHERE timestamp >= datetime('now', '-7 days')
+    """)
+    stats['week_chats'] = cur.fetchone()[0]
+    
+    # 가장 많이 나온 감정 태그
+    cur.execute("""
+    SELECT tags FROM chats 
+    WHERE tags IS NOT NULL AND tags != '중립'
+    """)
+    
+    all_tags = []
+    for row in cur.fetchall():
+        tags = row[0].split(', ')
+        all_tags.extend([t.strip() for t in tags if t.strip() and t.strip() != '중립'])
+    
+    if all_tags:
+        from collections import Counter
+        most_common = Counter(all_tags).most_common(1)[0]
+        stats['most_common_tag'] = most_common[0]
+        stats['most_common_count'] = most_common[1]
+    else:
+        stats['most_common_tag'] = '없음'
+        stats['most_common_count'] = 0
+    
+    conn.close()
+    return stats
+
 def get_strong_warning(risk_level):
     """위험도에 따른 강력한 경고 메시지"""
     if risk_level == "high":
@@ -887,15 +1079,16 @@ if 'portfolio' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.0</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 맥락 기억 + 감정 압박 시스템 🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.1</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! 대시보드 완성 📈🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
 # ============================================================================
 
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🧭 AI 상담",
+    "📊 대시보드",
     "📚 상담 기록",
     "💼 실시간 포트폴리오",
     "⚙️ 설정"
@@ -1053,10 +1246,114 @@ with tab1:
             st.warning("⚠️ 질문을 입력해주세요!")
 
 # ============================================================================
-# TAB 2: 상담 기록
+# TAB 2: 대시보드 (v4.1 NEW!)
 # ============================================================================
 
 with tab2:
+    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">📊 나의 투자 심리 대시보드</span></div>', unsafe_allow_html=True)
+    
+    st.info("✨ 당신의 감정 패턴과 위험 신호를 한눈에 확인하세요!")
+    
+    # 통계 카드
+    stats = get_dashboard_stats()
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric(
+            label="📝 총 상담 횟수",
+            value=f"{stats['total_chats']}회"
+        )
+    
+    with col2:
+        st.metric(
+            label="📊 평균 감정 점수",
+            value=f"{stats['avg_emotion']}/10",
+            delta=f"{'위험' if stats['avg_emotion'] > 6.5 else '주의' if stats['avg_emotion'] > 5 else '안정'}"
+        )
+    
+    with col3:
+        st.metric(
+            label="🚨 고위험 상담",
+            value=f"{stats['high_risk_count']}회"
+        )
+    
+    with col4:
+        st.metric(
+            label="📅 최근 7일",
+            value=f"{stats['week_chats']}회"
+        )
+    
+    st.divider()
+    
+    # 감정 히트맵
+    st.markdown("### 📅 언제 가장 위험한가요?")
+    
+    try:
+        heatmap_fig = create_emotion_heatmap()
+        st.plotly_chart(heatmap_fig, use_container_width=True)
+        
+        st.info("💡 **히트맵 해석**: 빨간색일수록 감정이 불안정한 시간대입니다. 이 시간대에는 투자 결정을 피하세요!")
+    except Exception as e:
+        st.warning("⚠️ 히트맵을 생성하려면 최소 10개 이상의 상담 기록이 필요합니다.")
+    
+    st.divider()
+    
+    # 감정 점수 추이
+    st.markdown("### 📈 내 감정은 어떻게 변했나요?")
+    
+    try:
+        timeline_fig = create_risk_timeline()
+        if timeline_fig:
+            st.plotly_chart(timeline_fig, use_container_width=True)
+            st.info("💡 **추이 분석**: 빨간 선(6.5) 이상이면 HIGH 위험, 주황 선(5.0) 이상이면 MID 주의입니다.")
+        else:
+            st.warning("⚠️ 데이터가 부족합니다. 상담을 더 진행해주세요!")
+    except Exception as e:
+        st.warning("⚠️ 차트를 생성하려면 상담 기록이 필요합니다.")
+    
+    st.divider()
+    
+    # 감정 태그 빈도
+    st.markdown("### 🏷️ 어떤 감정이 가장 많나요?")
+    
+    col_tag1, col_tag2 = st.columns([2, 1])
+    
+    with col_tag1:
+        try:
+            tag_fig = create_emotion_tag_chart()
+            if tag_fig:
+                st.plotly_chart(tag_fig, use_container_width=True)
+            else:
+                st.warning("⚠️ 감정 태그 데이터가 부족합니다.")
+        except Exception as e:
+            st.warning("⚠️ 차트를 생성하려면 상담 기록이 필요합니다.")
+    
+    with col_tag2:
+        st.markdown("#### 📌 가장 많은 감정")
+        st.metric(
+            label="",
+            value=stats['most_common_tag'],
+            delta=f"{stats['most_common_count']}회"
+        )
+        
+        st.markdown("---")
+        
+        st.markdown("#### 🎯 고위험 감정")
+        st.error("""
+        **주의 필요:**
+        - 탐욕
+        - 자포자기
+        - 충동
+        - FOMO
+        - 공포
+        """)
+
+# ============================================================================
+# TAB 3: 상담 기록
+# ============================================================================
+
+with tab3:
     st.subheader("📚 과거 상담 기록")
     
     history = load_history()
@@ -1083,10 +1380,10 @@ with tab2:
         st.info("📝 아직 상담 기록이 없습니다.")
 
 # ============================================================================
-# TAB 3: 실시간 포트폴리오
+# TAB 4: 실시간 포트폴리오
 # ============================================================================
 
-with tab3:
+with tab4:
     st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">💼 실시간 포트폴리오 🔥</span></div>', unsafe_allow_html=True)
     
     st.info("✨ pykrx 기반 실시간 주가 추적 (20분 지연)")
@@ -1191,22 +1488,28 @@ with tab3:
                 st.warning("⚠️ 모든 항목을 올바르게 입력해주세요!")
 
 # ============================================================================
-# TAB 4: 설정
+# TAB 5: 설정
 # ============================================================================
 
-with tab4:
+with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v4.0 - 맥락 기억 + 감정 압박 시스템!**
+    **GINI Guardian v4.1 - 대시보드 완성!**
     
-    🆕 v4.0 핵심 기능:
+    🆕 v4.1 핵심 기능:
+       - 📊 **감정 히트맵**: 요일 × 시간대별 위험 패턴 시각화
+       - 📈 **위험지표 추이**: 시간별 감정 점수 변화 그래프
+       - 🏷️ **감정 태그 빈도**: 어떤 감정이 가장 많은지 차트
+       - 📌 **통계 대시보드**: 총 상담, 평균 점수, 고위험 횟수 등
+       - 💡 **인사이트 제공**: "언제 가장 위험한가요?" 분석
+    
+    ✅ v4.0 기능:
        - 🧠 맥락 기억 시스템: AI가 과거 상담 기억
        - 🎯 감정 태그 12종: 불안/분노/충동/후회/탐욕/공포/FOMO/자포자기/우울/흥분/회의감/냉정
        - 💥 압박 멘트 시스템: 고위험 감정 감지 시 강력한 개입
        - 🔒 Text Input Blocking: 특정 단어 입력 강제
        - 📊 중독 패턴 분석: 시간대/요일별 위험 패턴 추적
-       - 💾 위험한 순간 기록: 가장 위험했던 순간 자동 저장
     
     ✅ 기존 기능:
        - 종목명 자동 보정 (퍼지 매칭)
@@ -1215,17 +1518,10 @@ with tab4:
        - 상담 기록 저장
        - 성능 최적화 (캐싱)
     
-    **압박 멘트 효과:**
-    - "탐욕" 감지 → 가족 생각하게 함
-    - "자포자기" 감지 → 긴급 개입
-    - "충동" 감지 → 24시간 대기 권유
-    - "FOMO" 감지 → 현실 직시
-    - "공포" 감지 → 진정 유도
-    
     **다음 업그레이드:**
     - 위험지표 고도화 (거래 패턴 분석)
-    - 대시보드 완성 (감정 히트맵)
     - 주간 리포트 자동 생성
+    - 알림 시스템
     """)
     
     st.markdown("#### 📋 기술 스택")
@@ -1234,24 +1530,25 @@ with tab4:
 - Groq API: AI 상담
 - pykrx: 실시간 주식 데이터
 - SQLite: 데이터 저장 + 맥락 기억
+- Plotly: 대시보드 시각화 (NEW!)
 - 퍼지 매칭: 종목명 보정
 - 감정 분석: 12종 태그 시스템
     """, language="python")
     
-    st.markdown("#### 🎯 제미니(지니) 전략")
+    st.markdown("#### 🎯 v4.1 대시보드 전략")
     st.write("""
-    **v4.0 맥락 기억 시스템:**
-    1. 가장 위험했던 순간 자동 기록
-    2. 사용자 고유의 중독 패턴 분석
-    3. 압박 멘트 효과 추적
+    **시각화의 힘:**
+    - 숫자보다 그래프가 직관적
+    - "수요일 저녁 9시가 위험해요" → 한눈에 확인
+    - 자기 패턴 인식 → 스스로 조심
     
-    **감정 압박 시스템:**
-    - 고위험 감정 감지 시 강력한 개입
-    - 가족/미래 시각화로 감성적 압박
-    - Text Input Blocking으로 강제 일시정지
+    **제공하는 인사이트:**
+    1. 감정 히트맵 → "언제" 위험한지
+    2. 추이 차트 → "어떻게" 변하는지
+    3. 태그 분석 → "무엇이" 문제인지
     
     **라이라 설계 × 미라클 구현 × 제미니 전략**
     """)
 
 st.divider()
-st.markdown("---\n🛡️ **GINI Guardian v4.0** | 🧠 맥락 기억 + 💥 감정 압박 | 💙 라이라 × 미라클 × 제미니")
+st.markdown("---\n🛡️ **GINI Guardian v4.1** | 📊 대시보드 완성 | 💙 라이라 × 미라클 × 제미니")
