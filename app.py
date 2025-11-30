@@ -691,34 +691,37 @@ with tab4:
     # 종목 추가
     st.markdown("### ➕ 종목 추가하기")
     
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        new_ticker = st.text_input("종목코드", placeholder="005930", key="new_ticker")
-    with col2:
-        new_name = st.text_input("종목명", placeholder="삼성전자", key="new_name")
-    with col3:
-        new_buy_price = st.number_input("매입가", min_value=0, value=70000, step=1000, key="new_buy")
-    with col4:
-        new_quantity = st.number_input("수량", min_value=1, value=10, step=1, key="new_qty")
-    
-    if st.button("➕ 포트폴리오에 추가", type="primary"):
-        if new_ticker and new_name:
-            # DB에 저장
-            save_portfolio_stock(new_ticker, new_name, new_buy_price, new_quantity)
-            
-            # Session state 업데이트
-            st.session_state.portfolio.append({
-                '종목코드': new_ticker,
-                '종목명': new_name,
-                '매입가': new_buy_price,
-                '수량': new_quantity
-            })
-            
-            st.success(f"✅ {new_name} 추가 완료!")
-            st.rerun()
-        else:
-            st.warning("⚠️ 종목코드와 종목명을 입력해주세요!")
+    with st.form("add_stock_form", clear_on_submit=True):
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            new_ticker = st.text_input("종목코드", placeholder="042700")
+        with col2:
+            new_name = st.text_input("종목명", placeholder="한미반도체")
+        with col3:
+            new_buy_price = st.number_input("매입가", min_value=0, value=70000, step=1000)
+        with col4:
+            new_quantity = st.number_input("수량", min_value=1, value=10, step=1)
+        
+        submitted = st.form_submit_button("➕ 포트폴리오에 추가", type="primary", use_container_width=True)
+        
+        if submitted:
+            if new_ticker and new_name and new_buy_price > 0:
+                # DB에 저장
+                save_portfolio_stock(new_ticker, new_name, new_buy_price, new_quantity)
+                
+                # Session state 업데이트
+                st.session_state.portfolio.append({
+                    '종목코드': new_ticker,
+                    '종목명': new_name,
+                    '매입가': new_buy_price,
+                    '수량': new_quantity
+                })
+                
+                st.success(f"✅ {new_name} ({new_ticker}) 추가 완료! 새로고침 버튼을 눌러주세요.")
+                st.balloons()
+            else:
+                st.warning("⚠️ 모든 항목을 올바르게 입력해주세요!")
 
 # ============================================================================
 # TAB 5: 설정
