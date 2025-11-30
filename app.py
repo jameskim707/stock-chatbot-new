@@ -866,7 +866,7 @@ def create_emotion_heatmap():
     import plotly.graph_objects as go
     import numpy as np
     
-    conn = sqlite3.connect("gini.db", check_same_thread=False)  ✅
+   conn = sqlite3.connect("gini.db", check_same_thread=False)
     # 시간대별, 요일별 감정 점수 조회
     cur.execute("""
     SELECT 
