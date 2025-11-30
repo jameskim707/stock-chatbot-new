@@ -237,9 +237,8 @@ def update_portfolio_realtime(portfolio):
 # 🗄️ SQLite 데이터베이스 함수
 # ============================================================================
 
-@st.cache_resource
 def get_connection():
-    """SQLite 연결 (캐싱)"""
+    """SQLite 연결"""
     conn = sqlite3.connect("gini.db", check_same_thread=False)
     return conn
 
@@ -294,7 +293,7 @@ def save_chat(user_input, ai_response, emotion_score, risk_level, tags):
 @st.cache_data(ttl=30)  # 30초 캐싱
 def load_history():
     """과거 상담 기록 조회 (캐싱)"""
-    conn = get_connection()
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
     cur.execute("SELECT user_input, ai_response, emotion_score, risk_level, tags, timestamp FROM chats ORDER BY id DESC LIMIT 50")
     rows = cur.fetchall()
@@ -304,7 +303,7 @@ def load_history():
 @st.cache_data(ttl=30)  # 30초 캐싱
 def get_emotion_stats():
     """감정 통계 (캐싱)"""
-    conn = get_connection()
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
     cur.execute("SELECT emotion_score, timestamp FROM chats WHERE emotion_score IS NOT NULL ORDER BY timestamp")
     rows = cur.fetchall()
@@ -328,7 +327,7 @@ def save_portfolio_stock(ticker, stock_name, buy_price, quantity):
 @st.cache_data(ttl=60)  # 1분 캐싱
 def load_portfolio_from_db():
     """DB에서 포트폴리오 로드 (캐싱)"""
-    conn = get_connection()
+    conn = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
     cur.execute("SELECT ticker, stock_name, buy_price, quantity FROM portfolio")
     rows = cur.fetchall()
