@@ -31,20 +31,20 @@ st.markdown("""
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GINI Guardian">
-    <link rel="manifest" href="./manifest_final.json">
-    <link rel="icon" type="image/png" sizes="192x192" href="./static-icons//icon-192x192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="./static-icons//icon-512x512.png">
-    <link rel="apple-touch-icon" href="./static-icons//icon-192x192.png">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="./static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./static/icons/icon-512x512.png">
+    <link rel="apple-touch-icon" href="./static/icons/icon-192x192.png">
 </head>
 <script>
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function() {
             navigator.serviceWorker.register('./service-worker.js')
                 .then(function(registration) {
-                    console.log('✅ Service Worker 등록 성공');
+                    console.log(' Service Worker 등록 성공');
                 })
                 .catch(function(error) {
-                    console.log('❌ Service Worker 등록 실패:', error);
+                    console.log(' Service Worker 등록 실패:', error);
                 });
         });
     }
@@ -1360,7 +1360,7 @@ def create_report_text(report):
 📊 이번 주 통계
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-✅ 총 상담 횟수: {report['total_chats']}회
+ 총 상담 횟수: {report['total_chats']}회
 📈 평균 감정 점수: {report['avg_emotion']}/10
 🚨 고위험 상담: {report['high_risk_count']}회
 
@@ -1396,10 +1396,10 @@ def create_report_text(report):
 🎯 거래 패턴 분석
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-과매매: {'❌ 감지됨' if report['patterns']['overtrading'] else '✅ 없음'}
-복수 매매: {'❌ 감지됨' if report['patterns']['revenge'] else '✅ 없음'}
-연속 손실: {'❌ 감지됨' if report['patterns']['loss_streak'] else '✅ 없음'}
-FOMO 중독: {'❌ 감지됨' if report['patterns']['fomo'] else '✅ 없음'}
+과매매: {' 감지됨' if report['patterns']['overtrading'] else ' 없음'}
+복수 매매: {' 감지됨' if report['patterns']['revenge'] else ' 없음'}
+연속 손실: {' 감지됨' if report['patterns']['loss_streak'] else ' 없음'}
+FOMO 중독: {' 감지됨' if report['patterns']['fomo'] else ' 없음'}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📅 요일별 상담 횟수
@@ -1604,7 +1604,7 @@ with tab1:
                 
                 for stock in correction_result['found_stocks']:
                     if stock['confidence'] == 1.0:
-                        st.success(f"✅ {stock['corrected']} ({stock['code']})")
+                        st.success(f" {stock['corrected']} ({stock['code']})")
                     else:
                         st.info(f"💡 '{stock['original']}' → **{stock['corrected']}** ({stock['code']}) 으로 보정되었습니다.")
                 
@@ -1703,17 +1703,17 @@ with tab1:
                     col_confirm, col_stop = st.columns(2)
                     
                     with col_confirm:
-                        if st.button("✅ 그래도 진행", type="secondary"):
+                        if st.button(" 그래도 진행", type="secondary"):
                             if blocking_input == pressure_msg['blocking_word']:
                                 st.error("⚠️ 당신의 선택입니다. 하지만 후회하지 마세요.")
                                 save_pressure_result("pressure", tags[0] if tags else "unknown", False)
                             else:
-                                st.error(f"❌ '{pressure_msg['blocking_word']}'를 정확히 입력해주세요!")
+                                st.error(f" '{pressure_msg['blocking_word']}'를 정확히 입력해주세요!")
                     
                     with col_stop:
                         if st.button("🛑 멈춤 (현명한 선택)", type="primary"):
                             st.balloons()
-                            st.success("✅ 훌륭합니다! 당신은 현명한 결정을 했습니다!")
+                            st.success(" 훌륭합니다! 당신은 현명한 결정을 했습니다!")
                             save_pressure_result("pressure", tags[0] if tags else "unknown", True)
                     
                 else:
@@ -1741,7 +1741,7 @@ with tab1:
                     tag_display = " ".join([f"{tag_colors.get(tag, '⚫')} {tag}" for tag in tags])
                     st.info(tag_display)
                 
-                st.success("✅ 상담 기록이 저장되었습니다! 📚")
+                st.success(" 상담 기록이 저장되었습니다! 📚")
                 
                 st.markdown("---")
         else:
@@ -1809,7 +1809,7 @@ with tab2:
             
             st.markdown("---")
     else:
-        st.success("✅ **현재 건강한 투자 패턴입니다!**")
+        st.success(" **현재 건강한 투자 패턴입니다!**")
         st.info("""
         **안전한 투자 습관:**
         - 충분한 고민 시간
@@ -1956,12 +1956,12 @@ with tab2:
             col1, col2 = st.columns(2)
             
             with col1:
-                st.metric("과매매", "❌ 감지됨" if report['patterns']['overtrading'] else "✅ 없음")
-                st.metric("복수 매매", "❌ 감지됨" if report['patterns']['revenge'] else "✅ 없음")
+                st.metric("과매매", " 감지됨" if report['patterns']['overtrading'] else " 없음")
+                st.metric("복수 매매", " 감지됨" if report['patterns']['revenge'] else " 없음")
             
             with col2:
-                st.metric("연속 손실", "❌ 감지됨" if report['patterns']['loss_streak'] else "✅ 없음")
-                st.metric("FOMO 중독", "❌ 감지됨" if report['patterns']['fomo'] else "✅ 없음")
+                st.metric("연속 손실", " 감지됨" if report['patterns']['loss_streak'] else " 없음")
+                st.metric("FOMO 중독", " 감지됨" if report['patterns']['fomo'] else " 없음")
             
             st.divider()
             
@@ -1991,7 +1991,7 @@ with tab2:
                 height=400
             )
             
-            st.success("✅ 리포트가 생성되었습니다! 위 텍스트를 복사하여 저장하세요.")
+            st.success(" 리포트가 생성되었습니다! 위 텍스트를 복사하여 저장하세요.")
 
 # ============================================================================
 # TAB 3: 상담 기록
@@ -2003,7 +2003,7 @@ with tab3:
     history = load_history()
     
     if history:
-        st.success(f"✅ 총 {len(history)}개의 상담 기록")
+        st.success(f" 총 {len(history)}개의 상담 기록")
         st.divider()
         
         for idx, (user, ai, emo, risk, tags, timestamp) in enumerate(history, 1):
@@ -2126,7 +2126,7 @@ with tab4:
                     '수량': new_quantity
                 })
                 
-                st.success(f"✅ {new_name} ({new_ticker}) 추가 완료! 새로고침 버튼을 눌러주세요.")
+                st.success(f" {new_name} ({new_ticker}) 추가 완료! 새로고침 버튼을 눌러주세요.")
                 st.balloons()
             else:
                 st.warning("⚠️ 모든 항목을 올바르게 입력해주세요!")
@@ -2142,37 +2142,37 @@ with tab5:
     **GINI Guardian v4.4 - 라이라 최종 수정 완료! ✨**
     
     🆕 v4.4 라이라 피드백 반영:
-       - ✅ **톤 통일**: 전문적이고 객관적인 중간 톤으로 통일
-       - ✅ **경고 문구 전문화**: "지금 투자하면 손실 확률이 매우 높습니다" 등 명확한 표현
-       - ✅ **행동 단계 추가**: 30초 호흡, 2분 자리 이탈, 투자 이유 적기 등 실행 가능한 액션
-       - ✅ **압박 멘트 개선**: 더 전문적이고 분명한 경고
-       - ✅ **행동경제학 검증**: "충동적 결정 95% 실패" 등 근거 제시
+       -  **톤 통일**: 전문적이고 객관적인 중간 톤으로 통일
+       -  **경고 문구 전문화**: "지금 투자하면 손실 확률이 매우 높습니다" 등 명확한 표현
+       -  **행동 단계 추가**: 30초 호흡, 2분 자리 이탈, 투자 이유 적기 등 실행 가능한 액션
+       -  **압박 멘트 개선**: 더 전문적이고 분명한 경고
+       -  **행동경제학 검증**: "충동적 결정 95% 실패" 등 근거 제시
     
-    ✅ v4.3 기능:
+     v4.3 기능:
        - 주간 리포트 자동 생성
        - 종합 평가 (🟢안정/🟡주의/🔴위험)
        - TOP 3 감정 분석
        - 텍스트 복사 가능
     
-    ✅ v4.2 기능:
+     v4.2 기능:
        - 과매매 감지 (3일 5회)
        - 복수 매매 감지 (손실 후 1시간)
        - 연속 손실 패턴
        - FOMO 중독 감지
     
-    ✅ v4.1 기능:
+     v4.1 기능:
        - 감정 히트맵
        - 위험지표 추이
        - 감정 태그 빈도
        - 통계 대시보드
     
-    ✅ v4.0 기능:
+     v4.0 기능:
        - 맥락 기억 시스템
        - 감정 태그 12종
        - 압박 멘트 시스템
        - Text Input Blocking
     
-    ✅ 기존 기능:
+     기존 기능:
        - 종목명 자동 보정
        - 실시간 포트폴리오
        - 감정 분석 & 위험지표
