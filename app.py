@@ -388,7 +388,7 @@ def save_portfolio_stock(ticker, stock_name, buy_price, quantity):
     INSERT INTO portfolio (ticker, stock_name, buy_price, quantity)
     VALUES (?, ?, ?, ?)
     """, (ticker, stock_name, buy_price, quantity))
-    conn.commit()  ✅
+    conn.commit()
     conn.close()
     
     # 캐시 무효화
