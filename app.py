@@ -1536,7 +1536,18 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 with tab1:
     st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">💬 투자 심리 상담</span></div>', unsafe_allow_html=True)
     
-    st.info("✨ 감정적 투자를 막고 이성적 판단을 돕는 AI 상담사입니다.")
+    # v4.4: 라이라 추천 인트로
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+        <p style="color: white; font-size: 1.1em; margin: 0; text-align: center; line-height: 1.6;">
+        안녕하세요. 저는 <strong>감정에 흔들린 투자 결정을 막아주는</strong><br>
+        <strong>'주식 과잉방지 AI 상담가'</strong>입니다.<br>
+        <br>
+        지금 당신의 심리·상황을 함께 점검하며<br>
+        <strong>안전한 투자를 돕겠습니다.</strong> 🛡️
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # 종목명 자동 보정 안내
     with st.expander("💡 종목명 자동 보정 기능", expanded=False):
