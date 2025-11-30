@@ -120,6 +120,25 @@ def update_portfolio_realtime(portfolio):
             
             total_buy += buy_amount
             total_value += current_amount
+        else:
+            # 데이터 조회 실패해도 표시 (매입가 기준)
+            buy_amount = item['매입가'] * item['수량']
+            
+            updated.append({
+                '종목코드': item['종목코드'],
+                '종목명': item.get('종목명', '정보없음'),
+                '매입가': item['매입가'],
+                '현재가': item['매입가'],  # 데이터 없으면 매입가로 표시
+                '수량': item['수량'],
+                '매입금액': buy_amount,
+                '평가금액': buy_amount,
+                '손익금액': 0,
+                '수익률': 0.0,
+                '등락률': 0.0
+            })
+            
+            total_buy += buy_amount
+            total_value += buy_amount
     
     total_profit = total_value - total_buy
     total_rate = ((total_value - total_buy) / total_buy * 100) if total_buy > 0 else 0
@@ -652,16 +671,19 @@ with tab4:
         st.markdown("### 📊 보유 종목")
         
         for stock in updated_portfolio:
-            status_emoji = "🔴" if stock['수익률'] < 0 else "🟢"
-            bg_color = "#fff3cd" if stock['수익률'] < 0 else "#d4edda"
-            text_color = "#dc3545" if stock['수익률'] < 0 else "#28a745"
+            status_emoji = "🔴" if stock['수익률'] < 0 else "🟢" if stock['수익률'] > 0 else "⚪"
+            bg_color = "#fff3cd" if stock['수익률'] < 0 else "#d4edda" if stock['수익률'] > 0 else "#e9ecef"
+            text_color = "#dc3545" if stock['수익률'] < 0 else "#28a745" if stock['수익률'] > 0 else "#6c757d"
+            
+            # 데이터 없는 종목 표시
+            data_status = "⚠️ 실시간 데이터 없음" if stock['수익률'] == 0 and stock['등락률'] == 0 else ""
             
             col_stock, col_delete = st.columns([6, 1])
             
             with col_stock:
                 st.markdown(f'''
                 <div style="background-color: {bg_color}; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
-                    {status_emoji} <strong>{stock["종목명"]}</strong> ({stock["종목코드"]})
+                    {status_emoji} <strong>{stock["종목명"]}</strong> ({stock["종목코드"]}) {data_status}
                     <br>
                     매입: ₩{stock["매입가"]:,} | 현재: ₩{stock["현재가"]:,} | 수량: {stock["수량"]}개
                     <br>
