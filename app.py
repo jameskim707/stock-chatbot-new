@@ -22,19 +22,38 @@ from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
 # ============================================================================
-# 🎨 라이라 CSS 테마 v2 - 부드러운 라벤더
+# 🎨 강력한 배경색 CSS - app.py CSS 부분 교체
 # ============================================================================
-# app.py의 st.set_page_config() 바로 아래에 추가
 
 st.markdown("""
 <style>
 /* ------------------------------- */
-/* 🌙 Global Theme - 부드러운 라벤더 */
+/* 🌙 강력한 배경색 적용 */
 /* ------------------------------- */
-.stApp {
+body,
+.stApp,
+[data-testid="stAppViewContainer"],
+.main,
+[data-testid="stApp"],
+section[data-testid="stAppViewContainer"] > .main {
     background-color: #1A1625 !important;
-    color: #EDEAFF;
-    font-family: "Pretendard", "Inter", sans-serif;
+}
+
+/* 메인 컨테이너 */
+.block-container {
+    background-color: transparent !important;
+}
+
+/* 사이드바 */
+[data-testid="stSidebar"],
+[data-testid="stSidebarNav"],
+section[data-testid="stSidebar"] > div {
+    background-color: #13111A !important;
+}
+
+/* 헤더 */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
 }
 
 /* ------------------------------- */
@@ -50,6 +69,29 @@ st.markdown("""
 }
 
 /* ------------------------------- */
+/* 📝 텍스트 컬러 */
+/* ------------------------------- */
+.stApp {
+    color: #EDEAFF !important;
+    font-family: "Pretendard", "Inter", sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--headline) !important;
+    text-shadow: 
+        0 0 8px rgba(167,139,250,0.4),
+        0 0 14px rgba(167,139,250,0.25);
+}
+
+p, div, span, .stMarkdown {
+    color: var(--body-text) !important;
+}
+
+.stCaption {
+    color: var(--sub-text) !important;
+}
+
+/* ------------------------------- */
 /* 🌈 메인 박스 그라데이션 */
 /* ------------------------------- */
 .intro-banner,
@@ -62,36 +104,8 @@ st.markdown("""
     backdrop-filter: blur(6px);
 }
 
-.intro-banner h2,
-.intro-banner p,
-.main-banner h2,
-.main-banner p {
-    color: var(--headline) !important;
-    text-shadow: 
-        0 0 8px rgba(167,139,250,0.4),
-        0 0 14px rgba(167,139,250,0.25);
-}
-
 /* ------------------------------- */
-/* 📝 텍스트 컬러 */
-/* ------------------------------- */
-h1, h2, h3 {
-    color: var(--headline) !important;
-    text-shadow: 
-        0 0 8px rgba(167,139,250,0.4),
-        0 0 14px rgba(167,139,250,0.25);
-}
-
-p, .stMarkdown {
-    color: var(--body-text) !important;
-}
-
-.stCaption {
-    color: var(--sub-text) !important;
-}
-
-/* ------------------------------- */
-/* 🟣 Buttons - 라벤더 그라데이션 */
+/* 🟣 Buttons */
 /* ------------------------------- */
 .stButton > button {
     background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
@@ -107,26 +121,6 @@ p, .stMarkdown {
 
 .stButton > button:hover {
     filter: brightness(1.12) !important;
-    box-shadow: 
-        0 0 18px rgba(167,139,250,0.5),
-        0 6px 12px rgba(167,139,250,0.3) !important;
-}
-
-/* ------------------------------- */
-/* 📦 Glass UI Boxes */
-/* ------------------------------- */
-.stExpander {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 16px !important;
-    backdrop-filter: blur(4px);
-}
-
-.streamlit-expanderHeader {
-    background: rgba(167,139,250,0.08) !important;
-    color: var(--headline) !important;
-    border-radius: 12px !important;
-    padding: 14px !important;
 }
 
 /* ------------------------------- */
@@ -142,11 +136,6 @@ p, .stMarkdown {
     padding: 12px !important;
 }
 
-.stTextInput > div > div > input::placeholder,
-.stTextArea > div > div > textarea::placeholder {
-    color: var(--sub-text) !important;
-}
-
 .stTextInput > div > div > input:focus,
 .stTextArea > div > div > textarea:focus {
     border-color: var(--soft-lavender) !important;
@@ -154,22 +143,12 @@ p, .stMarkdown {
 }
 
 /* ------------------------------- */
-/* 🧭 Tabs Navigation */
+/* 🧭 Tabs */
 /* ------------------------------- */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 8px;
-}
-
 .stTabs [data-baseweb="tab"] {
     background: rgba(255,255,255,0.05);
     color: var(--body-text) !important;
     border-radius: 8px;
-    padding: 8px 16px;
-}
-
-.stTabs [data-baseweb="tab"]:hover {
-    background: rgba(167,139,250,0.15);
-    color: var(--headline) !important;
 }
 
 .stTabs [aria-selected="true"] {
@@ -179,67 +158,38 @@ p, .stMarkdown {
 }
 
 /* ------------------------------- */
-/* 📈 Metrics & Stats */
+/* 📦 Expander */
+/* ------------------------------- */
+.stExpander {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--glass-border) !important;
+    border-radius: 16px !important;
+}
+
+.streamlit-expanderHeader {
+    background: rgba(167,139,250,0.08) !important;
+    color: var(--headline) !important;
+}
+
+/* ------------------------------- */
+/* 📈 Metrics */
 /* ------------------------------- */
 .stMetric {
     background: rgba(255,255,255,0.05) !important;
     border: 1px solid var(--glass-border) !important;
     border-radius: 12px !important;
-    padding: 16px !important;
-}
-
-.stMetric label {
-    color: var(--sub-text) !important;
 }
 
 .stMetric [data-testid="stMetricValue"] {
     color: var(--soft-lavender) !important;
-    text-shadow: 0 0 8px rgba(167,139,250,0.4);
 }
 
 /* ------------------------------- */
-/* 💬 Chat Messages */
-/* ------------------------------- */
-.stChatMessage {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 12px !important;
-    padding: 16px !important;
-}
-
-.stChatMessage [data-testid="chatAvatarIcon-user"] {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-}
-
-/* ------------------------------- */
-/* 📱 Sidebar */
-/* ------------------------------- */
-[data-testid="stSidebar"] {
-    background-color: #13111A !important;
-    border-right: 1px solid var(--glass-border);
-}
-
-[data-testid="stSidebar"] .stMarkdown {
-    color: var(--body-text) !important;
-}
-
-/* ------------------------------- */
-/* 🎯 Selectbox & Dropdown */
-/* ------------------------------- */
-.stSelectbox > div > div {
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 10px !important;
-    color: var(--headline) !important;
-}
-
-/* ------------------------------- */
-/* 🔻 Dividers */
+/* 🔻 Divider */
 /* ------------------------------- */
 hr {
     border: none !important;
     border-bottom: 1px solid rgba(167,139,250,0.15) !important;
-    margin: 20px 0 !important;
 }
 
 /* ------------------------------- */
@@ -249,17 +199,9 @@ hr {
     color: var(--headline) !important;
     font-size: 2.3rem !important;
     font-weight: 700 !important;
-    text-align: center;
     text-shadow: 
         0 0 12px rgba(167,139,250,0.5),
         0 0 20px rgba(167,139,250,0.3);
-}
-
-.final-tag {
-    color: #FFD1F3 !important;
-    text-shadow: 0 0 8px rgba(255,180,255,0.5);
-    font-weight: 600;
-    font-size: 1.1rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -2467,4 +2409,5 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
+
 
