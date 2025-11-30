@@ -10,7 +10,7 @@ serverAddress = "0.0.0.0"
 
 [theme]
 primaryColor = "#B7A4FF"
-backgroundColor = "#1a1625"
-secondaryBackgroundColor = "#2d2640"
-textColor = "#e8e4f3"
+backgroundColor = "#1A1625"
+secondaryBackgroundColor = "#251f35"
+textColor = "#EDEAFF"
 font = "sans serif"
