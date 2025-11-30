@@ -21,7 +21,35 @@ import os
 from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
+# ============================================================================
+# 📱 PWA 설정
+# ============================================================================
 
+st.markdown("""
+<head>
+    <meta name="theme-color" content="#667eea">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GINI Guardian">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="./static/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="./static/icons/icon-512x512.png">
+    <link rel="apple-touch-icon" href="./static/icons/icon-192x192.png">
+</head>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(function(registration) {
+                    console.log('✅ Service Worker 등록 성공');
+                })
+                .catch(function(error) {
+                    console.log('❌ Service Worker 등록 실패:', error);
+                });
+        });
+    }
+</script>
+""", unsafe_allow_html=True)
 # ============================================================================
 # 📊 종목명 데이터베이스 (제미니 전략)
 # ============================================================================
