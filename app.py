@@ -25,191 +25,124 @@ st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout=
 # 🎨 강력한 라이라 디자인 CSS - FINAL 적용 버전
 # ====================================================================
 
-st.markdown(r"""
+st.markdown("""
 <style>
 
-/* ------------------------------- */
-/* 🌙 강력한 배경 전체 적용 */
-/* ------------------------------- */
-body,
-.stApp,
-[data-testid="stAppViewContainer"],
-.main,
-[data-testid="stApp"],
-section[data-testid="stAppViewContainer"] > .main {
-    background-color: #1A1625 !important;
+:root {
+    --mint-bg: #E9FBF7;
+    --mint-light: #D4F7F0;
+    --teal-main: #13B7A6;
+    --teal-dark: #0A8E80;
+    --text-dark: #0F2B33;
+    --card-border: rgba(0,0,0,0.08);
+}
+
+/* 전체 배경 */
+body, .stApp, [data-testid="stAppViewContainer"], .main {
+    background: var(--mint-bg) !important;
 }
 
 /* 메인 컨테이너 */
 .block-container {
-    background-color: transparent !important;
+    padding-top: 2rem !important;
 }
 
-/* 사이드바 */
-[data-testid="stSidebar"],
-[data-testid="stSidebarNav"],
-section[data-testid="stSidebar"] > div {
-    background-color: #13111A !important;
+/* 헤더 카드 (GINI Guardian v4.4) */
+.header-title {
+    font-size: 2.4rem !important;
+    font-weight: 800 !important;
+    color: var(--teal-dark) !important;
+    text-shadow: 0px 2px 6px rgba(0,0,0,0.12);
 }
 
-/* 헤더 */
-header[data-testid="stHeader"] {
-    background-color: transparent !important;
-}
-
-/* ------------------------------- */
-/* 🎨 Brand Colors */
-/* ------------------------------- */
-:root {
-    --soft-lavender: #A78BFA;
-    --pastel-violet: #C4B5FD;
-    --glass-border: rgba(255,255,255,0.12);
-    --headline: #EDEAFF;
-    --body-text: #D8D3E8;
-    --sub-text: #B5ADC7;
-}
-
-/* ------------------------------- */
-/* 📝 텍스트 컬러 */
-/* ------------------------------- */
-.stApp {
-    color: #EDEAFF !important;
-    font-family: "Pretendard", "Inter", sans-serif;
-}
-
-h1, h2, h3, h4, h5, h6 {
-    color: var(--headline) !important;
-    text-shadow:
-        0 0 8px rgba(167,139,250,0.4),
-        0 0 14px rgba(167,139,250,0.25);
-}
-
-p, div, span, .stMarkdown {
-    color: var(--body-text) !important;
-}
-
-.stCaption {
-    color: var(--sub-text) !important;
-}
-
-/* ------------------------------- */
-/* 🌈 메인 박스 그라데이션 */
-/* ------------------------------- */
-.intro-banner,
-.main-banner {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-    padding: 26px !important;
+/*************************************
+ 🔹 메인 상담 배너 (가운데 큰 박스)
+*************************************/
+.intro-banner, .main-banner {
+    background: linear-gradient(120deg, #6EE7C8, #4DB6AC) !important;
     border-radius: 18px !important;
-    border: 1px solid var(--glass-border) !important;
-    box-shadow: 0 0 25px rgba(167,139,250,0.2) !important;
-    backdrop-filter: blur(6px);
+    padding: 28px !important;
+    color: white !important;
+    border: none !important;
+    box-shadow: 0px 6px 16px rgba(0,0,0,0.12);
 }
 
-/* ------------------------------- */
-/* 🟣 Buttons */
-/* ------------------------------- */
+/*************************************
+ 🔹 입력창 / 텍스트 필드
+*************************************/
+.stTextInput input, .stTextArea textarea {
+    background: white !important;
+    border: 1px solid var(--card-border) !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+    color: var(--text-dark) !important;
+}
+
+.stTextInput input:focus, .stTextArea textarea:focus {
+    border-color: var(--teal-main) !important;
+    box-shadow: 0 0 6px rgba(19,183,166,0.25) !important;
+}
+
+/*************************************
+ 🔹 버튼 스타일
+*************************************/
 .stButton > button {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-    color: #1A1535 !important;
-    font-weight: 600 !important;
-    border-radius: 12px !important;
+    background: linear-gradient(120deg, #34D1BF, #13B7A6) !important;
+    color: white !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
     padding: 12px 18px !important;
     border: none !important;
-    box-shadow:
-        0 0 12px rgba(167,139,250,0.35),
-        0 4px 8px rgba(167,139,250,0.2) !important;
+    box-shadow: 0px 4px 10px rgba(19,183,166,0.25);
 }
 
 .stButton > button:hover {
-    filter: brightness(1.12) !important;
+    filter: brightness(1.08);
 }
 
-/* ------------------------------- */
-/* 📊 Input Fields */
-/* ------------------------------- */
-.stTextInput > div > div > input,
-.stTextArea > div > div > textarea,
-.stNumberInput > div > div > input {
-    background: rgba(255,255,255,0.08) !important;
-    border: 1px solid var(--glass-border) !important;
-    color: var(--headline) !important;
-    border-radius: 10px !important;
-    padding: 12px !important;
+/*************************************
+ 🔹 Expander (종목명 자동 보정)
+*************************************/
+.stExpander {
+    background: var(--mint-light) !important;
+    color: var(--text-dark) !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(0,0,0,0.05) !important;
 }
 
-.stTextInput > div > div > input:focus,
-.stTextArea > div > div > textarea:focus {
-    border-color: var(--soft-lavender) !important;
-    box-shadow: 0 0 8px rgba(167,139,250,0.3) !important;
+.streamlit-expanderHeader {
+    color: var(--text-dark) !important;
+    font-weight: 600 !important;
 }
 
-/* ------------------------------- */
-/* 🧭 Tabs */
-/* ------------------------------- */
+/*************************************
+ 🔹 Tabs
+*************************************/
 .stTabs [data-baseweb="tab"] {
-    background: rgba(255,255,255,0.05);
-    color: var(--body-text) !important;
+    background: rgba(255,255,255,0.7) !important;
+    color: var(--text-dark) !important;
     border-radius: 8px;
 }
 
 .stTabs [aria-selected="true"] {
-    background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
-    color: #1A1535 !important;
-    font-weight: 600;
-}
-
-/* ------------------------------- */
-/* 📦 Expander */
-/* ------------------------------- */
-.stExpander {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 16px !important;
-}
-
-.streamlit-expanderHeader {
-    background: rgba(167,139,250,0.08) !important;
-    color: var(--headline) !important;
-}
-
-/* ------------------------------- */
-/* 📈 Metrics */
-/* ------------------------------- */
-.stMetric {
-    background: rgba(255,255,255,0.05) !important;
-    border: 1px solid var(--glass-border) !important;
-    border-radius: 12px !important;
-}
-
-.stMetric [data-testid="stMetricValue"] {
-    color: var(--soft-lavender) !important;
-}
-
-/* ------------------------------- */
-/* 🔻 Divider */
-/* ------------------------------- */
-hr {
-    border: none !important;
-    border-bottom: 1px solid rgba(167,139,250,0.15) !important;
-}
-
-/* ------------------------------- */
-/* 🌟 Header Title */
-/* ------------------------------- */
-.header-animated {
-    color: var(--headline) !important;
-    font-size: 2.3rem !important;
+    background: linear-gradient(120deg, #34D1BF, #13B7A6) !important;
+    color: white !important;
     font-weight: 700 !important;
-    text-shadow:
-        0 0 12px rgba(167,139,250,0.5),
-        0 0 20px rgba(167,139,250,0.3);
 }
 
+/*************************************
+ 🔹 기본 텍스트
+*************************************/
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-dark) !important;
+}
 
+p, div, span, label {
+    color: var(--text-dark) !important;
+}
 
 </style>
 """, unsafe_allow_html=True)
-
 
 
 
@@ -2416,6 +2349,7 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
+
 
 
 
