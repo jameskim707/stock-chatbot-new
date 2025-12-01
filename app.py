@@ -21,13 +21,16 @@ import os
 from difflib import SequenceMatcher
 
 st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
-st.markdown("""
-st.markdown("""
+# ====================================================================
+# 🎨 강력한 라이라 디자인 CSS - FINAL 적용 버전
+# ====================================================================
+
+st.markdown(r"""
 <style>
 
-/* --------------------------------------------- */
-/*  전체 앱 배경 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 🌙 강력한 배경 전체 적용 */
+/* ------------------------------- */
 body,
 .stApp,
 [data-testid="stAppViewContainer"],
@@ -37,7 +40,7 @@ section[data-testid="stAppViewContainer"] > .main {
     background-color: #1A1625 !important;
 }
 
-/* 메인 컨테이너 영역 */
+/* 메인 컨테이너 */
 .block-container {
     background-color: transparent !important;
 }
@@ -54,9 +57,9 @@ header[data-testid="stHeader"] {
     background-color: transparent !important;
 }
 
-/* --------------------------------------------- */
-/*  라이라 브랜드 컬러 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 🎨 Brand Colors */
+/* ------------------------------- */
 :root {
     --soft-lavender: #A78BFA;
     --pastel-violet: #C4B5FD;
@@ -66,11 +69,11 @@ header[data-testid="stHeader"] {
     --sub-text: #B5ADC7;
 }
 
-/* --------------------------------------------- */
-/*  기본 텍스트 스타일 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 📝 텍스트 컬러 */
+/* ------------------------------- */
 .stApp {
-    color: var(--body-text) !important;
+    color: #EDEAFF !important;
     font-family: "Pretendard", "Inter", sans-serif;
 }
 
@@ -89,9 +92,9 @@ p, div, span, .stMarkdown {
     color: var(--sub-text) !important;
 }
 
-/* --------------------------------------------- */
-/*  라벤더 그라데이션 메인 배너 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 🌈 메인 박스 그라데이션 */
+/* ------------------------------- */
 .intro-banner,
 .main-banner {
     background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
@@ -102,9 +105,9 @@ p, div, span, .stMarkdown {
     backdrop-filter: blur(6px);
 }
 
-/* --------------------------------------------- */
-/*  버튼 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 🟣 Buttons */
+/* ------------------------------- */
 .stButton > button {
     background: linear-gradient(165deg, #A78BFA, #C4B5FD) !important;
     color: #1A1535 !important;
@@ -121,9 +124,9 @@ p, div, span, .stMarkdown {
     filter: brightness(1.12) !important;
 }
 
-/* --------------------------------------------- */
-/*  인풋 박스 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 📊 Input Fields */
+/* ------------------------------- */
 .stTextInput > div > div > input,
 .stTextArea > div > div > textarea,
 .stNumberInput > div > div > input {
@@ -140,9 +143,9 @@ p, div, span, .stMarkdown {
     box-shadow: 0 0 8px rgba(167,139,250,0.3) !important;
 }
 
-/* --------------------------------------------- */
-/*  Tabs */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 🧭 Tabs */
+/* ------------------------------- */
 .stTabs [data-baseweb="tab"] {
     background: rgba(255,255,255,0.05);
     color: var(--body-text) !important;
@@ -155,9 +158,9 @@ p, div, span, .stMarkdown {
     font-weight: 600;
 }
 
-/* --------------------------------------------- */
-/*  Expander */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 📦 Expander */
+/* ------------------------------- */
 .stExpander {
     background: rgba(255,255,255,0.05) !important;
     border: 1px solid var(--glass-border) !important;
@@ -169,9 +172,9 @@ p, div, span, .stMarkdown {
     color: var(--headline) !important;
 }
 
-/* --------------------------------------------- */
-/*  Metrics */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 📈 Metrics */
+/* ------------------------------- */
 .stMetric {
     background: rgba(255,255,255,0.05) !important;
     border: 1px solid var(--glass-border) !important;
@@ -182,17 +185,17 @@ p, div, span, .stMarkdown {
     color: var(--soft-lavender) !important;
 }
 
-/* --------------------------------------------- */
+/* ------------------------------- */
 /* 🔻 Divider */
-/* --------------------------------------------- */
+/* ------------------------------- */
 hr {
     border: none !important;
     border-bottom: 1px solid rgba(167,139,250,0.15) !important;
 }
 
-/* --------------------------------------------- */
-/*  헤더 타이틀 */
-/* --------------------------------------------- */
+/* ------------------------------- */
+/* 🌟 Header Title */
+/* ------------------------------- */
 .header-animated {
     color: var(--headline) !important;
     font-size: 2.3rem !important;
@@ -200,19 +203,6 @@ hr {
     text-shadow:
         0 0 12px rgba(167,139,250,0.5),
         0 0 20px rgba(167,139,250,0.3);
-}
-
-/* ====================================================== */
-/*  깐부가 요청한 “연한 파란색 카드” (투자 심리 박스) */
-/* ====================================================== */
-.light-blue-card {
-    background: linear-gradient(90deg, #A9D9FF 0%, #B9B5FF 100%) !important;
-    padding: 26px !important;
-    border-radius: 18px !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    box-shadow: 0 0 22px rgba(169,217,255,0.18) !important;
-    color: #1A1A1A !important;
-    text-align: center !important;
 }
 
 </style>
@@ -2424,6 +2414,7 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
+
 
 
 
