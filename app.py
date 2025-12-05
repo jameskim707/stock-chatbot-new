@@ -20,7 +20,10 @@ import io
 import os
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v4.4", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v4.5 Chat", page_icon="🛡️", layout="wide")
+
+# Groq API 설정
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
 # ====================================================================
 # 🎨 강력한 라이라 디자인 CSS - FINAL 적용 버전
 # ====================================================================
@@ -1599,10 +1602,85 @@ def get_strong_warning(risk_level):
 # 🤖 Groq 상담 함수
 # ============================================================================
 
-def groq_counsel(user_text):
-    """Groq API를 통한 AI 상담"""
+def build_guardian_system_prompt():
+    """포트폴리오 기반 System Prompt 생성"""
+    
+    # 포트폴리오 정보
+    portfolio_info = ""
+    if 'portfolio' in st.session_state and st.session_state.portfolio:
+        portfolio_info = "\n[현재 포트폴리오]\n"
+        for stock in st.session_state.portfolio[:5]:  # 최대 5개만
+            portfolio_info += f"- {stock['종목명']}: {stock['수량']}주\n"
+    
+    # 최근 감정 태그 정보
+    recent_emotions = ""
+    if 'chat_history' in st.session_state and len(st.session_state.chat_history) > 0:
+        # 마지막 5개 대화의 감정 태그
+        recent_tags = []
+        for chat in st.session_state.chat_history[-5:]:
+            if 'tags' in chat and chat['tags']:
+                recent_tags.extend(chat['tags'])
+        if recent_tags:
+            tag_counts = Counter(recent_tags)
+            top_emotions = tag_counts.most_common(3)
+            recent_emotions = f"\n[최근 감지된 감정]\n"
+            for emotion, count in top_emotions:
+                recent_emotions += f"- {emotion} ({count}회)\n"
+    
+    prompt = f"""당신은 GINI Guardian의 전문 투자 심리 상담가입니다.
+
+**핵심 원칙:**
+1. 감정적 투자를 막고 합리적 판단을 돕기
+2. 전문적이고 명확한 조언 (3-5문장)
+3. 과도한 위험이 보이면 강력히 경고
+4. 구체적이고 실행 가능한 조언
+
+**경고 문구 사용:**
+- "지금 투자하면 손실 확률이 매우 높습니다"
+- "심리 상태가 불안정합니다"
+- "감정적 투자는 금물입니다"
+{portfolio_info}{recent_emotions}
+**짧고 명확하게 답변하세요.**"""
+    
+    return prompt
+
+def groq_counsel_chat(messages):
+    """Groq API 대화형 호출"""
+    
+    if not GROQ_API_KEY:
+        return "⚠️ Groq API 키가 설정되지 않았습니다.", 5.0
+    
     try:
-        api_key = os.getenv("GROQ_API_KEY") or "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"
+        client = Groq(api_key=GROQ_API_KEY)
+        
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=messages,
+            temperature=0.7,
+            max_tokens=500
+        )
+        
+        full_response = response.choices[0].message.content
+        
+        # 감정 점수 추출
+        emotion_match = re.search(r'\[감정점수[:\s]*(\d+(?:\.\d+)?)\]', full_response)
+        emotion_score = float(emotion_match.group(1)) if emotion_match else 5.0
+        
+        # 감정 점수 제거
+        clean_response = re.sub(r'\[감정점수[:\s]*\d+(?:\.\d+)?\]', '', full_response).strip()
+        
+        return clean_response, emotion_score
+        
+    except Exception as e:
+        return f"⚠️ API 오류: {str(e)}", 5.0
+
+def groq_counsel(user_text):
+    """Groq API를 통한 AI 상담 (하위 호환성 유지)"""
+    try:
+        api_key = GROQ_API_KEY or os.getenv("GROQ_API_KEY")
+        
+        if not api_key:
+            return "⚠️ API 키가 없습니다.", 5.0
         
         client = Groq(api_key=api_key)
         
@@ -1629,7 +1707,7 @@ def groq_counsel(user_text):
 """
         
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=500
@@ -1662,12 +1740,16 @@ if 'portfolio' not in st.session_state:
             {'종목코드': '000660', '종목명': 'SK하이닉스', '매입가': 130000, '수량': 5}
         ]
 
+# 채팅 히스토리 초기화
+if 'guardian_chat_history' not in st.session_state:
+    st.session_state.guardian_chat_history = []
+
 # ============================================================================
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.4</div>', unsafe_allow_html=True)
-st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">FINAL! 라이라 최종 수정 완료 ✨🔥</span></div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.5 Chat</div>', unsafe_allow_html=True)
+st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! Groq 대화형 상담 🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
 # 탭 구성
@@ -1686,192 +1768,186 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 # ============================================================================
 
 with tab1:
-    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">💬 투자 심리 상담</span></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">💬 투자 심리 상담 (대화형)</span></div>', unsafe_allow_html=True)
     
-    # v4.4: 라이라 추천 인트로
-    st.markdown("""
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
-        <p style="color: white; font-size: 1.1em; margin: 0; text-align: center; line-height: 1.6;">
-        안녕하세요. 저는 <strong>감정에 흔들린 투자 결정을 막아주는</strong><br>
-        <strong>'주식 과잉방지 AI 상담가'</strong>입니다.<br>
-        <br>
-        지금 당신의 심리·상황을 함께 점검하며<br>
-        <strong>안전한 투자를 돕겠습니다.</strong> 🛡️
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # 종목명 자동 보정 안내
-    with st.expander("💡 종목명 자동 보정 기능", expanded=False):
-        st.write("""
-        **오타가 있어도 걱정 마세요!**
-        - '상승전자' → '삼성전자' 자동 보정
-        - '항미반도체' → '한미반도체' 자동 보정
-        - '네이바' → 'NAVER' 자동 보정
+    # API 키 확인
+    if not GROQ_API_KEY:
+        st.error("⚠️ **Groq API 키가 없습니다.** Streamlit secrets에 GROQ_API_KEY를 추가해주세요.")
+    else:
+        # 인트로 배너
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 10px; margin-bottom: 20px;">
+            <p style="color: white; font-size: 1.1em; margin: 0; text-align: center; line-height: 1.6;">
+            안녕하세요. 저는 <strong>감정에 흔들린 투자 결정을 막아주는</strong><br>
+            <strong>'주식 과잉방지 AI 상담가'</strong>입니다.<br>
+            <br>
+            지금 당신의 심리·상황을 함께 점검하며<br>
+            <strong>안전한 투자를 돕겠습니다.</strong> 🛡️<br>
+            <br>
+            <strong>✨ NEW! 계속 대화가 가능합니다!</strong>
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        AI가 자동으로 정확한 종목명을 찾아드립니다!
-        """)
-    
-    user_input = st.text_area(
-        "💬 투자 고민을 솔직하게 말씀해주세요:",
-        height=120,
-        placeholder="예) 삼성전자 손실이 커서 너무 힘들어요...\n예) 오늘 카카오 급등했는데 지금 사도 될까요?",
-        key="chat_textarea"
-    )
-    
-    if st.button("🧭 AI 상담 받기", use_container_width=True, type="primary"):
-        if user_input.strip():
+        # 종목명 자동 보정 안내
+        with st.expander("💡 종목명 자동 보정 기능", expanded=False):
+            st.write("""
+            **오타가 있어도 걱정 마세요!**
+            - '상승전자' → '삼성전자' 자동 보정
+            - '항미반도체' → '한미반도체' 자동 보정
+            - '네이바' → 'NAVER' 자동 보정
+            
+            AI가 자동으로 정확한 종목명을 찾아드립니다!
+            """)
+        
+        st.markdown("---")
+        
+        # 채팅 히스토리 표시
+        for msg in st.session_state.guardian_chat_history:
+            with st.chat_message(msg['role']):
+                st.write(msg['content'])
+                
+                # AI 응답에 메타 정보 표시
+                if msg['role'] == 'assistant' and 'meta' in msg:
+                    meta = msg['meta']
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.caption(f"📊 위험지표: {meta.get('risk', 0):.1f}/10")
+                    with col2:
+                        if meta.get('tags'):
+                            st.caption(f"🏷️ {', '.join(meta['tags'][:3])}")
+        
+        # 사용자 입력
+        user_input = st.chat_input("💬 투자 고민을 솔직하게 말씀해주세요...")
+        
+        if user_input:
             # 종목명 자동 보정
             correction_result = extract_and_correct_stocks(user_input)
             
             if correction_result['found_stocks']:
-                st.markdown("---")
-                st.markdown("### 🎯 종목명 인식")
-                
+                corrected_notice = []
                 for stock in correction_result['found_stocks']:
-                    if stock['confidence'] == 1.0:
-                        st.success(f" {stock['corrected']} ({stock['code']})")
-                    else:
-                        st.info(f"💡 '{stock['original']}' → **{stock['corrected']}** ({stock['code']}) 으로 보정되었습니다.")
+                    if stock['confidence'] < 1.0:
+                        corrected_notice.append(f"'{stock['original']}' → {stock['corrected']}")
+                
+                if corrected_notice:
+                    st.info(f"💡 종목명 보정: {', '.join(corrected_notice)}")
                 
                 user_input = correction_result['corrected']
             
-            st.markdown("---")
+            # 사용자 메시지 추가
+            st.session_state.guardian_chat_history.append({
+                'role': 'user',
+                'content': user_input
+            })
             
-            with st.spinner("🤔 AI가 분석 중... (2~3초)"):
-                response, emotion_score = groq_counsel(user_input)
-                
-                volatility_score = 5.0
-                news_score = 3.0
-                risk = calc_risk_score(emotion_score, volatility_score, news_score)
-                risk_emoji = get_risk_emoji(risk)
-                risk_level = detect_risk_level(risk)
-                tags = detect_tags(user_input)  # 이제 리스트 반환
-                
-                # v4.0: 위험한 순간 기록
-                if risk >= 6.5:
-                    save_dangerous_moment(risk, tags, user_input)
+            with st.chat_message("user"):
+                st.write(user_input)
+            
+            # System Prompt 생성
+            system_prompt = build_guardian_system_prompt()
+            
+            # 메시지 구성
+            recent_history = st.session_state.guardian_chat_history[-10:]
+            messages = [{"role": "system", "content": system_prompt}]
+            
+            for msg in recent_history:
+                messages.append({
+                    "role": msg['role'],
+                    "content": msg['content']
+                })
+            
+            # AI 응답 생성
+            with st.chat_message("assistant"):
+                with st.spinner("🤔 AI가 분석 중..."):
+                    response, emotion_score = groq_counsel_chat(messages)
                     
-                    # 중독 패턴 분석
-                    now = datetime.now()
-                    hour = now.hour
-                    day_of_week = now.weekday()
-                    update_addiction_pattern(hour, day_of_week, "만회")
-                
-                save_chat(user_input, response, emotion_score, risk_level, tags)
-                
-                # v4.2: 거래 패턴 경고
-                pattern_warnings = get_trading_pattern_warnings()
-                
-                if pattern_warnings:
-                    st.markdown("---")
-                    st.markdown("### 🚨 거래 패턴 경고")
+                    # 위험도 계산
+                    volatility_score = 5.0
+                    news_score = 3.0
+                    risk = calc_risk_score(emotion_score, volatility_score, news_score)
+                    risk_emoji = get_risk_emoji(risk)
+                    risk_level = detect_risk_level(risk)
+                    tags = detect_tags(user_input)
                     
-                    for warning in pattern_warnings:
-                        if warning['level'] == 'CRITICAL':
-                            st.error(f"**🔴 {warning['type']}**: {warning['message']}")
-                        elif warning['level'] == 'HIGH':
-                            st.warning(f"**🟠 {warning['type']}**: {warning['message']}")
-                        else:
-                            st.info(f"**🟡 {warning['type']}**: {warning['message']}")
+                    # 위험한 순간 기록
+                    if risk >= 6.5:
+                        save_dangerous_moment(risk, tags, user_input)
+                        now = datetime.now()
+                        update_addiction_pattern(now.hour, now.weekday(), "만회")
                     
-                    st.markdown("---")
-                
-                # 위험도 표시
-                col_risk1, col_risk2 = st.columns(2)
-                
-                with col_risk1:
-                    st.metric(
-                        label="📊 위험지표",
-                        value=f"{risk} / 10",
-                        delta=None
-                    )
-                
-                with col_risk2:
-                    st.info(f"**{risk_emoji}**")
-                
-                # v4.0: 압박 멘트 시스템
-                pressure_msg = get_pressure_message(tags)
-                
-                if pressure_msg:
-                    st.markdown("---")
+                    # 상담 기록 저장
+                    save_chat(user_input, response, emotion_score, risk_level, tags)
                     
-                    st.markdown(f"""
-                    <div class="danger-box">
-                        <h2 style="color: #dc3545; margin: 0;">{pressure_msg['title']}</h2>
-                        {pressure_msg['message']}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # 거래 패턴 경고
+                    pattern_warnings = get_trading_pattern_warnings()
                     
-                    st.markdown("---")
+                    if pattern_warnings:
+                        st.markdown("### 🚨 거래 패턴 경고")
+                        for warning in pattern_warnings:
+                            if warning['level'] == 'CRITICAL':
+                                st.error(f"**🔴 {warning['type']}**: {warning['message']}")
+                            elif warning['level'] == 'HIGH':
+                                st.warning(f"**🟠 {warning['type']}**: {warning['message']}")
+                        st.markdown("---")
                     
-                    # v4.4: 행동 단계 추가 (라이라)
-                    st.markdown("### 💡 지금 당장 해야 할 행동")
-                    st.info("""
-**투자 충동을 줄이려면 '행동'이 필요합니다.** (행동경제학 검증)
-
-아래 중 **최소 2가지**를 실행하세요:
-                    """)
+                    # 압박 메시지
+                    pressure_msg = get_pressure_message(tags)
                     
-                    for action in pressure_msg['actions']:
-                        st.markdown(f"- {action}")
+                    if pressure_msg:
+                        st.markdown(f"""
+                        <div class="danger-box">
+                            <h2 style="color: #dc3545; margin: 0;">{pressure_msg['title']}</h2>
+                            {pressure_msg['message']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.markdown("### 💡 지금 당장 해야 할 행동")
+                        for action in pressure_msg['actions']:
+                            st.markdown(f"- {action}")
+                        
+                        st.warning(f"⚠️ 계속하려면 **'{pressure_msg['blocking_word']}'** 를 입력하세요.")
                     
-                    st.markdown("---")
-                    st.markdown("### 🔒 안전 확인")
-                    st.warning(f"⚠️ 계속하려면 아래에 **'{pressure_msg['blocking_word']}'** 를 정확히 입력하세요.")
+                    # AI 응답 표시
+                    st.write(response)
                     
-                    blocking_input = st.text_input(
-                        "단어 입력:",
-                        key="blocking_input",
-                        placeholder=f"{pressure_msg['blocking_word']} 입력"
-                    )
-                    
-                    col_confirm, col_stop = st.columns(2)
-                    
-                    with col_confirm:
-                        if st.button(" 그래도 진행", type="secondary"):
-                            if blocking_input == pressure_msg['blocking_word']:
-                                st.error("⚠️ 당신의 선택입니다. 하지만 후회하지 마세요.")
-                                save_pressure_result("pressure", tags[0] if tags else "unknown", False)
-                            else:
-                                st.error(f" '{pressure_msg['blocking_word']}'를 정확히 입력해주세요!")
-                    
-                    with col_stop:
-                        if st.button("🛑 멈춤 (현명한 선택)", type="primary"):
-                            st.balloons()
-                            st.success(" 훌륭합니다! 당신은 현명한 결정을 했습니다!")
-                            save_pressure_result("pressure", tags[0] if tags else "unknown", True)
-                    
-                else:
-                    # 강력한 경고 메시지 (위험도 높을 때)
-                    warning_html = get_strong_warning(risk_level)
-                    if warning_html:
-                        st.markdown(warning_html, unsafe_allow_html=True)
-                
-                st.divider()
-                
-                # AI 상담 결과
-                st.markdown("### 🧭 AI 상담 결과")
-                st.write(response)
-                
-                # 감정 태그 표시
-                if tags and tags != ["중립"]:
-                    st.markdown("### 🏷️ 감지된 감정")
-                    tag_colors = {
-                        "탐욕": "🟠", "자포자기": "🔴", "충동": "🟡",
-                        "FOMO": "🟡", "공포": "🔴", "불안": "🟡",
-                        "분노": "🟠", "후회": "🔵", "우울": "🟣",
-                        "흥분": "🟢", "회의감": "⚪", "냉정": "🟢"
-                    }
-                    
-                    tag_display = " ".join([f"{tag_colors.get(tag, '⚫')} {tag}" for tag in tags])
-                    st.info(tag_display)
-                
-                st.success(" 상담 기록이 저장되었습니다! 📚")
-                
-                st.markdown("---")
-        else:
-            st.warning("⚠️ 질문을 입력해주세요!")
+                    # 메타 정보 표시
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.caption(f"📊 위험지표: {risk:.1f}/10 {risk_emoji}")
+                    with col2:
+                        if tags and tags != ["중립"]:
+                            tag_colors = {
+                                "탐욕": "🟠", "자포자기": "🔴", "충동": "🟡",
+                                "FOMO": "🟡", "공포": "🔴", "불안": "🟡",
+                                "분노": "🟠", "후회": "🔵", "우울": "🟣",
+                                "흥분": "🟢", "회의감": "⚪", "냉정": "🟢"
+                            }
+                            tag_display = " ".join([f"{tag_colors.get(tag, '⚫')} {tag}" for tag in tags[:3]])
+                            st.caption(f"🏷️ {tag_display}")
+            
+            # AI 응답 히스토리에 추가
+            st.session_state.guardian_chat_history.append({
+                'role': 'assistant',
+                'content': response,
+                'meta': {
+                    'risk': risk,
+                    'emotion_score': emotion_score,
+                    'tags': tags
+                }
+            })
+        
+        # 히스토리 관리
+        if len(st.session_state.guardian_chat_history) > 0:
+            st.markdown("---")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🗑️ 대화 내역 지우기", use_container_width=True):
+                    st.session_state.guardian_chat_history = []
+                    st.rerun()
+            with col2:
+                st.caption(f"총 {len(st.session_state.guardian_chat_history)}개 메시지")
 
 # ============================================================================
 # TAB 2: 대시보드 (v4.1 NEW!)
@@ -2349,15 +2425,3 @@ with tab5:
 st.divider()
 
 st.markdown("---\n🛡️ **GINI Guardian v4.4 FINAL** | ✨ 라이라 최종 수정 완료! | 💙 라이라 × 미라클 × 제미니")
-
-
-
-
-
-
-
-
-
-
-
-
