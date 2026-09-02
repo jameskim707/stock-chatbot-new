@@ -20,7 +20,7 @@ import io
 import os
 from difflib import SequenceMatcher
 
-st.set_page_config(page_title="GINI Guardian v4.5 Chat", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="GINI Guardian v4.6 Stable", page_icon="🛡️", layout="wide")
 
 # Groq API 설정
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", "")
@@ -268,11 +268,9 @@ try:
 except:
     PYKRX_AVAILABLE = False
 
-import random
-
 @st.cache_data(ttl=300)  # 5분 캐싱
 def get_stock_price_realtime(ticker):
-    """실시간 주가 조회 (pykrx 또는 Mock) - 5분 캐싱"""
+    """pykrx에서 확인 가능한 가장 최근 일별 종가 조회."""
     if PYKRX_AVAILABLE:
         try:
             end_date = datetime.now()
@@ -293,38 +291,10 @@ def get_stock_price_realtime(ticker):
                     '등락률': round(latest['등락률'], 2),
                     '조회일': df.index[-1].strftime("%Y-%m-%d")
                 }
-        except:
-            pass
-    
-    # Mock 데이터
-    return get_mock_stock_data(ticker)
+        except Exception:
+            return None
 
-def get_mock_stock_data(ticker):
-    """Mock 주식 데이터"""
-    mock_stocks = {
-        '005930': {'name': '삼성전자', 'base_price': 70000},
-        '000660': {'name': 'SK하이닉스', 'base_price': 130000},
-        '035420': {'name': 'NAVER', 'base_price': 200000},
-        '035720': {'name': '카카오', 'base_price': 50000},
-        '207940': {'name': '삼성바이오로직스', 'base_price': 800000},
-        '051910': {'name': 'LG화학', 'base_price': 400000},
-        '042700': {'name': '한미반도체', 'base_price': 70000},
-    }
-    
-    if ticker in mock_stocks:
-        info = mock_stocks[ticker]
-        base = info['base_price']
-        variation = random.uniform(-0.05, 0.05)
-        current = int(base * (1 + variation))
-        
-        return {
-            '종목코드': ticker,
-            '종목명': info['name'],
-            '현재가': current,
-            '등락률': round(variation * 100, 2),
-            '조회일': datetime.now().strftime("%Y-%m-%d")
-        }
-    
+    # 조회 실패 시 임의 가격을 만들지 않는다.
     return None
 
 def update_portfolio_realtime(portfolio):
@@ -353,7 +323,9 @@ def update_portfolio_realtime(portfolio):
                 '평가금액': current_amount,
                 '손익금액': profit_loss,
                 '수익률': round(profit_rate, 2),
-                '등락률': data['등락률']
+                '등락률': data['등락률'],
+                '조회일': data['조회일'],
+                '데이터상태': '정상'
             })
             
             total_buy += buy_amount
@@ -371,7 +343,9 @@ def update_portfolio_realtime(portfolio):
                 '평가금액': buy_amount,
                 '손익금액': 0,
                 '수익률': 0.0,
-                '등락률': 0.0
+                '등락률': 0.0,
+                '조회일': '-',
+                '데이터상태': '조회 실패'
             })
             
             total_buy += buy_amount
@@ -730,7 +704,7 @@ PRESSURE_MESSAGES = {
     "탐욕": {
         "title": "⚠️ 투자 위험 경고",
         "message": """
-**심리 상태가 불안정합니다. 지금 투자하면 손실 확률이 매우 높습니다.**
+**심리 상태가 불안정해 보입니다. 지금은 계획과 위험 한도를 다시 확인하세요.**
 
 탐욕에 의한 추가 매수의 87%는 더 큰 손실로 이어집니다. (행동경제학 연구 결과)
 
@@ -754,21 +728,16 @@ PRESSURE_MESSAGES = {
     "자포자기": {
         "title": "🔴 긴급 개입 필요",
         "message": """
-**STOP. 당신은 지금 가장 위험한 심리 상태입니다.**
+**지금은 투자 결정을 멈추고 상태를 점검해야 합니다.**
 
 "어차피 망했어"라는 생각으로 하는 투자는:
-- 100% 실패합니다 (통계적으로 검증됨)
-- 회복 불가능한 손실을 만듭니다
-- 투자 원금을 모두 잃을 수 있습니다
+- 손실을 만회하려는 충동을 키울 수 있습니다
+- 계획보다 큰 금액을 투자하게 만들 수 있습니다
+- 감당하기 어려운 손실로 이어질 수 있습니다
 
-**오늘 투자하면 손실 확률이 매우 높습니다.**
+**오늘은 투자 결정을 보류하고 계획을 다시 확인하는 편이 안전합니다.**
 
-당신의 1년 후를 상상해보세요:
-- 이 결정을 후회하는 당신
-- 가족 앞에서 고개 숙인 당신
-- 모든 것을 잃은 당신
-
-**지금 거래 앱을 끄세요. 지금 당장.**
+**지금 거래 앱을 닫고 신뢰할 수 있는 사람과 상의하세요.**
         """,
         "blocking_word": "멈춤",
         "actions": [
@@ -784,14 +753,11 @@ PRESSURE_MESSAGES = {
         "message": """
 **심리 상태가 불안정해 보이므로, 지금 투자는 위험합니다.**
 
-충동적 결정의 95%는 실패합니다. (행동경제학 검증 결과)
+충동이 강할 때는 계획과 위험 한도를 놓치기 쉽습니다.
 
 지금 당장 매수하고 싶은 마음, 24시간만 기다려보세요.
 
-**내일 다시 보면:**
-- 80%는 "안 사길 잘했다"고 생각합니다
-- 15%는 "더 싸게 살 수 있었다"고 생각합니다  
-- 5%만 "사야 했다"고 생각합니다
+24시간 뒤에도 같은 투자 근거가 유효한지 다시 확인하세요.
 
 **오늘의 감정 상태로는 합리적 결정을 내리기 어렵습니다.**
 
@@ -809,12 +775,9 @@ PRESSURE_MESSAGES = {
     "FOMO": {
         "title": "🎯 현실 직시 필요",
         "message": """
-**"남들은 다 번다"는 착각입니다. 지금 투자하면 손실 확률이 높습니다.**
+**"남들은 다 번다"는 생각만으로 투자하면 위험 기준을 놓치기 쉽습니다.**
 
-실제 통계:
-- SNS에서 수익 자랑하는 사람: 5%
-- 조용히 손실 보는 사람: 70%
-- 거짓말하는 사람: 25%
+SNS의 일부 사례만으로 다른 투자자의 실제 성과를 판단할 수 없습니다.
 
 **당신이 못 탄 그 주식, 내일 -10% 떨어질 수도 있습니다.**
 
@@ -1576,7 +1539,7 @@ def get_strong_warning(risk_level):
             <h3 style="color: #721c24; margin-top: 10px;">지금 당장 거래를 멈추세요!</h3>
             <p style="font-size: 1.1em; font-weight: bold; color: #721c24;">
             당신의 감정 상태는 극도로 불안정합니다.<br>
-            이 상태에서의 투자 결정은 99% 실패합니다.<br><br>
+            이 상태에서는 계획과 위험 기준을 지키기 어렵습니다.<br><br>
             <strong>즉시 행동할 것:</strong><br>
             1. 거래 앱을 끄세요<br>
             2. 최소 24시간 쉬세요<br>
@@ -1614,12 +1577,13 @@ def build_guardian_system_prompt():
     
     # 최근 감정 태그 정보
     recent_emotions = ""
-    if 'chat_history' in st.session_state and len(st.session_state.chat_history) > 0:
+    if 'guardian_chat_history' in st.session_state and len(st.session_state.guardian_chat_history) > 0:
         # 마지막 5개 대화의 감정 태그
         recent_tags = []
-        for chat in st.session_state.chat_history[-5:]:
-            if 'tags' in chat and chat['tags']:
-                recent_tags.extend(chat['tags'])
+        for chat in st.session_state.guardian_chat_history[-5:]:
+            meta = chat.get('meta', {})
+            if meta.get('tags'):
+                recent_tags.extend(meta['tags'])
         if recent_tags:
             tag_counts = Counter(recent_tags)
             top_emotions = tag_counts.most_common(3)
@@ -1636,7 +1600,7 @@ def build_guardian_system_prompt():
 4. 구체적이고 실행 가능한 조언
 
 **경고 문구 사용:**
-- "지금 투자하면 손실 확률이 매우 높습니다"
+- "지금은 투자 결정을 잠시 멈추는 것이 좋습니다"
 - "심리 상태가 불안정합니다"
 - "감정적 투자는 금물입니다"
 {portfolio_info}{recent_emotions}
@@ -1654,7 +1618,7 @@ def groq_counsel_chat(messages):
         client = Groq(api_key=GROQ_API_KEY)
         
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=messages,
             temperature=0.7,
             max_tokens=500
@@ -1671,8 +1635,10 @@ def groq_counsel_chat(messages):
         
         return clean_response, emotion_score
         
-    except Exception as e:
-        return f"⚠️ API 오류: {str(e)}", 5.0
+    except Exception as error:
+        status_code = getattr(error, "status_code", None)
+        code_text = f" (오류 코드: {status_code})" if status_code else ""
+        return f"⚠️ AI 상담 연결에 실패했습니다.{code_text} 잠시 후 다시 시도해주세요.", 5.0
 
 def groq_counsel(user_text):
     """Groq API를 통한 AI 상담 (하위 호환성 유지)"""
@@ -1696,7 +1662,7 @@ def groq_counsel(user_text):
 4. 구체적이고 실행 가능한 조언 제시
 
 **경고 문구 사용 원칙:**
-- "지금 투자하면 손실 확률이 매우 높습니다"
+- "지금은 투자 결정을 잠시 멈추는 것이 좋습니다"
 - "심리 상태가 불안정합니다"
 - "오늘의 감정 상태로는 합리적 결정을 내리기 어렵습니다"
 - "계획 외 매매는 당신의 원칙을 깨는 행동입니다"
@@ -1707,7 +1673,7 @@ def groq_counsel(user_text):
 """
         
         response = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=500
@@ -1722,8 +1688,10 @@ def groq_counsel(user_text):
         
         return clean_response, emotion_score
         
-    except Exception as e:
-        return f"상담 중 오류가 발생했습니다: {str(e)}", 5.0
+    except Exception as error:
+        status_code = getattr(error, "status_code", None)
+        code_text = f" (오류 코드: {status_code})" if status_code else ""
+        return f"상담 연결에 실패했습니다.{code_text} 잠시 후 다시 시도해주세요.", 5.0
 
 # ============================================================================
 # Session State 초기화
@@ -1735,10 +1703,8 @@ if 'portfolio' not in st.session_state:
     if db_portfolio:
         st.session_state.portfolio = db_portfolio
     else:
-        st.session_state.portfolio = [
-            {'종목코드': '005930', '종목명': '삼성전자', '매입가': 70000, '수량': 10},
-            {'종목코드': '000660', '종목명': 'SK하이닉스', '매입가': 130000, '수량': 5}
-        ]
+        # 실제 보유 종목으로 오해할 수 있는 예시 데이터는 자동 생성하지 않는다.
+        st.session_state.portfolio = []
 
 # 채팅 히스토리 초기화
 if 'guardian_chat_history' not in st.session_state:
@@ -1748,7 +1714,7 @@ if 'guardian_chat_history' not in st.session_state:
 # 🌟 메인 UI
 # ============================================================================
 
-st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.5 Chat</div>', unsafe_allow_html=True)
+st.markdown('<div class="header-animated">🛡️ GINI Guardian v4.6 Stable</div>', unsafe_allow_html=True)
 st.markdown('<div style="text-align: center; margin-bottom: 20px;"><span class="hot-badge" style="font-size: 1.2em; color: #ff4500;">NEW! Groq 대화형 상담 🔥</span></div>', unsafe_allow_html=True)
 
 # ============================================================================
@@ -1759,7 +1725,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🧭 AI 상담",
     "📊 대시보드",
     "📚 상담 기록",
-    "💼 실시간 포트폴리오",
+    "💼 포트폴리오",
     "⚙️ 설정"
 ])
 
@@ -2069,9 +2035,10 @@ with tab2:
     with col_tag2:
         st.markdown("#### 📌 가장 많은 감정")
         st.metric(
-            label="",
+            label="가장 많이 감지된 감정",
             value=stats['most_common_tag'],
-            delta=f"{stats['most_common_count']}회"
+            delta=f"{stats['most_common_count']}회",
+            label_visibility="collapsed"
         )
         
         st.markdown("---")
@@ -2226,13 +2193,13 @@ with tab3:
         st.info("📝 아직 상담 기록이 없습니다.")
 
 # ============================================================================
-# TAB 4: 실시간 포트폴리오
+# TAB 4: 포트폴리오
 # ============================================================================
 
 with tab4:
-    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span class="hot-badge" style="font-size: 1.8em; color: #ff4500;">💼 실시간 포트폴리오 🔥</span></div>', unsafe_allow_html=True)
+    st.markdown('<div style="text-align: center; margin-bottom: 15px;"><span style="font-size: 1.8em;">💼 포트폴리오</span></div>', unsafe_allow_html=True)
     
-    st.info("✨ pykrx 기반 실시간 주가 추적 (20분 지연)")
+    st.info("✨ pykrx에서 확인 가능한 최근 거래일 종가를 사용합니다. 실시간 체결가는 아닙니다.")
     
     col_refresh, col_add = st.columns([1, 3])
     
@@ -2268,7 +2235,7 @@ with tab4:
             bg_color = "#fff3cd" if stock['수익률'] < 0 else "#d4edda" if stock['수익률'] > 0 else "#e9ecef"
             text_color = "#dc3545" if stock['수익률'] < 0 else "#28a745" if stock['수익률'] > 0 else "#6c757d"
             
-            data_status = "⚠️ 실시간 데이터 없음" if stock['수익률'] == 0 and stock['등락률'] == 0 else ""
+            data_status = "⚠️ 가격 조회 실패" if stock.get('데이터상태') != '정상' else f"조회일 {stock.get('조회일', '-')}"
             
             col_stock, col_delete = st.columns([6, 1])
             
@@ -2341,14 +2308,16 @@ with tab5:
     st.subheader("⚙️ 설정 & 정보")
     
     st.info(f"""
-    **GINI Guardian v4.4 - 라이라 최종 수정 완료! ✨**
+    **GINI Guardian v4.6 Stable**
     
     🆕 v4.4 라이라 피드백 반영:
        -  **톤 통일**: 전문적이고 객관적인 중간 톤으로 통일
-       -  **경고 문구 전문화**: "지금 투자하면 손실 확률이 매우 높습니다" 등 명확한 표현
+       -  **경고 문구 개선**: 단정적인 손실 확률 대신 실행 가능한 멈춤 행동 안내
        -  **행동 단계 추가**: 30초 호흡, 2분 자리 이탈, 투자 이유 적기 등 실행 가능한 액션
        -  **압박 멘트 개선**: 더 전문적이고 분명한 경고
-       -  **행동경제학 검증**: "충동적 결정 95% 실패" 등 근거 제시
+       -  근거 없는 확률·통계 표현 제거
+       -  주가 조회 실패 시 임의 가격을 표시하지 않도록 개선
+       -  API 오류 상세정보 비공개 처리
     
      v4.3 기능:
        - 주간 리포트 자동 생성
@@ -2376,7 +2345,7 @@ with tab5:
     
      기존 기능:
        - 종목명 자동 보정
-       - 실시간 포트폴리오
+       - 최근 거래일 종가 기반 포트폴리오
        - 감정 분석 & 위험지표
        - 성능 최적화
     
