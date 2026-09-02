@@ -12,7 +12,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
-from groq import Groq
+import requests
 import re
 import sqlite3
 from collections import Counter
@@ -1144,27 +1144,40 @@ def get_dashboard_stats():
 # 🎯 위험지표 고도화 - 거래 패턴 분석 (v4.2)
 # ============================================================================
 
+def has_explicit_trade_intent(user_input):
+    """일반 투자 질문과 실제 주문/거래 의도를 구분한다."""
+    text = (user_input or "").lower().replace(" ", "")
+    trade_phrases = [
+        "추가매수", "추매", "물타기", "불타기", "매수하려", "매수할까",
+        "사려고", "살까", "사야할까", "주문하려", "주문할까", "주문했다",
+        "매도하려", "매도할까", "팔려고", "팔까", "손절하려", "손절할까",
+        "몰빵", "전량매수", "전량매도",
+    ]
+    return any(phrase in text for phrase in trade_phrases)
+
 def detect_overtrading():
     """
     과매매 감지
-    - 최근 3일 내 5회 이상 상담 → 과매매 의심
+    - 최근 3일 내 실제 거래 의도 5회 이상 → 과매매 의심
+    - 종목/시장에 관한 일반 질문은 집계하지 않음
     """
     conn = sqlite3.connect("gini.db", check_same_thread=False)
     cur = conn.cursor()
     
     cur.execute("""
-    SELECT COUNT(*) FROM chats
+    SELECT user_input FROM chats
     WHERE timestamp >= datetime('now', '-3 days')
     """)
-    
-    recent_count = cur.fetchone()[0]
+
+    recent_inputs = [row[0] for row in cur.fetchall()]
+    recent_count = sum(1 for text in recent_inputs if has_explicit_trade_intent(text))
     conn.close()
     
     if recent_count >= 5:
         return {
             'detected': True,
             'count': recent_count,
-            'message': f"⚠️ 최근 3일간 {recent_count}회 상담! 과매매 위험 신호입니다!"
+            'message': f"⚠️ 최근 3일간 실제 거래 의도가 {recent_count}회 감지되었습니다. 과매매 여부를 확인하세요."
         }
     
     return {'detected': False, 'count': recent_count}
@@ -1608,23 +1621,84 @@ def build_guardian_system_prompt():
     
     return prompt
 
+def local_guardian_fallback(user_text, reason=""):
+    """API 장애 때도 투자 과열 방지 상담을 계속 제공한다."""
+    text = (user_text or "").lower()
+
+    if any(word in text for word in ["어디", "종목", "추천", "뭘 사", "무엇을 사"]):
+        answer = (
+            "특정 종목을 바로 고르기보다 지금은 매수를 잠시 멈추는 편이 좋습니다. "
+            "먼저 투자 목적과 보유 기간, 감당 가능한 손실 한도를 적고 그 기준을 통과한 종목만 검토하세요. "
+            "추가매수 전에는 한 종목 비중이 전체 투자금의 20%를 넘지 않는지, 비상자금이 별도로 남아 있는지도 확인해보세요. "
+            "지금 꼭 사고 싶다면 오늘은 주문하지 말고 관심 목록에만 넣은 뒤 내일 다시 판단하세요."
+        )
+        score = 5.5
+    elif any(word in text for word in ["추가매수", "물타기", "평단", "더 살"]):
+        answer = (
+            "추가매수는 손실을 줄이는 방법이 아니라 투자금과 위험을 함께 늘리는 결정입니다. "
+            "매수 이유가 처음과 같은지, 손절 기준과 최대 투입 금액이 미리 정해져 있었는지 먼저 확인하세요. "
+            "계획에 없던 추가매수라면 오늘은 주문을 보류하고 최소 24시간 뒤 다시 검토하는 것을 권합니다."
+        )
+        score = 6.5
+    elif any(word in text for word in ["손실", "복구", "만회", "본전"]):
+        answer = (
+            "손실을 빨리 만회하려는 마음은 더 큰 위험을 선택하게 만들 수 있습니다. "
+            "지금은 신규 매매를 멈추고 전체 손실액, 종목별 비중, 현금 비중부터 확인하세요. "
+            "한 번의 거래로 복구하려 하지 말고 미리 정한 손실 한도를 넘었다면 포지션을 줄이는 방안을 검토하세요."
+        )
+        score = 7.0
+    elif any(word in text for word in ["급등", "놓칠", "지금 사", "fomo"]):
+        answer = (
+            "놓칠 것 같은 조급함이 느껴집니다. 급등 뒤 추격매수는 가격 변동을 감당하기 어려울 수 있습니다. "
+            "지금은 주문을 멈추고 매수 근거, 목표가, 손절가를 먼저 적어보세요. "
+            "세 가지를 바로 적지 못한다면 이번 거래는 건너뛰는 것이 안전합니다."
+        )
+        score = 7.0
+    else:
+        answer = (
+            "지금 바로 거래 결론을 내리기보다 투자 이유를 한 문장으로 정리해보세요. "
+            "매수 금액, 감당 가능한 손실, 보유 기간, 중단 기준이 모두 정해졌는지 확인해야 합니다. "
+            "하나라도 정해지지 않았다면 오늘은 주문을 보류하고 계획부터 세우는 것이 좋습니다."
+        )
+        score = 5.0
+
+    if reason:
+        answer += f"\n\n_현재 AI 연결 대신 안전 상담 모드로 답변했습니다 ({reason})._"
+    return answer, score
+
 def groq_counsel_chat(messages):
     """Groq API 대화형 호출"""
     
+    user_text = next(
+        (message.get("content", "") for message in reversed(messages)
+         if message.get("role") == "user"),
+        "",
+    )
+
     if not GROQ_API_KEY:
-        return "⚠️ Groq API 키가 설정되지 않았습니다.", 5.0
+        return local_guardian_fallback(user_text, "API 키 미설정")
     
     try:
-        client = Groq(api_key=GROQ_API_KEY)
-        
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=500
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {GROQ_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "openai/gpt-oss-20b",
+                "messages": messages,
+                "temperature": 0.7,
+                "max_tokens": 500,
+            },
+            timeout=40,
         )
-        
-        full_response = response.choices[0].message.content
+
+        if response.status_code != 200:
+            return local_guardian_fallback(user_text, f"Groq {response.status_code}")
+
+        data = response.json()
+        full_response = data["choices"][0]["message"]["content"]
         
         # 감정 점수 추출
         emotion_match = re.search(r'\[감정점수[:\s]*(\d+(?:\.\d+)?)\]', full_response)
@@ -1635,10 +1709,10 @@ def groq_counsel_chat(messages):
         
         return clean_response, emotion_score
         
+    except requests.Timeout:
+        return local_guardian_fallback(user_text, "응답 시간 초과")
     except Exception as error:
-        status_code = getattr(error, "status_code", None)
-        code_text = f" (오류 코드: {status_code})" if status_code else ""
-        return f"⚠️ AI 상담 연결에 실패했습니다.{code_text} 잠시 후 다시 시도해주세요.", 5.0
+        return local_guardian_fallback(user_text, type(error).__name__)
 
 def groq_counsel(user_text):
     """Groq API를 통한 AI 상담 (하위 호환성 유지)"""
@@ -1646,9 +1720,7 @@ def groq_counsel(user_text):
         api_key = GROQ_API_KEY or os.getenv("GROQ_API_KEY")
         
         if not api_key:
-            return "⚠️ API 키가 없습니다.", 5.0
-        
-        client = Groq(api_key=api_key)
+            return local_guardian_fallback(user_text, "API 키 미설정")
         
         prompt = f"""당신은 전문적이고 객관적인 투자 심리 상담사입니다.
 감정적인 투자를 막고, 합리적 판단을 돕는 것이 목표입니다.
@@ -1672,14 +1744,26 @@ def groq_counsel(user_text):
 (전문적이고 명확한 상담 내용)
 """
         
-        response = client.chat.completions.create(
-            model="openai/gpt-oss-20b",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
-            max_tokens=500
+        response = requests.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "openai/gpt-oss-20b",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 500,
+            },
+            timeout=40,
         )
-        
-        full_response = response.choices[0].message.content
+
+        if response.status_code != 200:
+            return local_guardian_fallback(user_text, f"Groq {response.status_code}")
+
+        data = response.json()
+        full_response = data["choices"][0]["message"]["content"]
         
         emotion_match = re.search(r'\[감정점수[:\s]*(\d+(?:\.\d+)?)\]', full_response)
         emotion_score = float(emotion_match.group(1)) if emotion_match else 5.0
@@ -1688,10 +1772,10 @@ def groq_counsel(user_text):
         
         return clean_response, emotion_score
         
+    except requests.Timeout:
+        return local_guardian_fallback(user_text, "응답 시간 초과")
     except Exception as error:
-        status_code = getattr(error, "status_code", None)
-        code_text = f" (오류 코드: {status_code})" if status_code else ""
-        return f"상담 연결에 실패했습니다.{code_text} 잠시 후 다시 시도해주세요.", 5.0
+        return local_guardian_fallback(user_text, type(error).__name__)
 
 # ============================================================================
 # Session State 초기화
@@ -1846,8 +1930,13 @@ with tab1:
                     # 상담 기록 저장
                     save_chat(user_input, response, emotion_score, risk_level, tags)
                     
-                    # 거래 패턴 경고
-                    pattern_warnings = get_trading_pattern_warnings()
+                    # 거래 패턴 경고는 현재 문장에 실제 거래 의도가 있을 때만 표시한다.
+                    # 일반적인 종목/시장 질문에는 누적 경고를 끼워 넣지 않는다.
+                    pattern_warnings = (
+                        get_trading_pattern_warnings()
+                        if has_explicit_trade_intent(user_input)
+                        else []
+                    )
                     
                     if pattern_warnings:
                         st.markdown("### 🚨 거래 패턴 경고")
